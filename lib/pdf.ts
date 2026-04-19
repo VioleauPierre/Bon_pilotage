@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 
 const COMMON_CHROME_PATHS = [
   process.env.CHROME_EXECUTABLE_PATH,
@@ -14,6 +15,44 @@ async function resolveExecutablePath(
   chromium: typeof import("@sparticuz/chromium").default,
 ) {
   if (process.env.VERCEL) {
+    const explicitBinPath = process.env.CHROMIUM_BIN_PATH;
+    if (explicitBinPath && fs.existsSync(explicitBinPath)) {
+      return chromium.executablePath(explicitBinPath);
+    }
+
+    const vercelBinCandidates = [
+      path.join(process.cwd(), "node_modules", "@sparticuz", "chromium", "bin"),
+      path.join(process.cwd(), ".next", "node_modules", "@sparticuz"),
+      path.join("/var/task", "node_modules", "@sparticuz", "chromium", "bin"),
+      path.join("/var/task", ".next", "node_modules", "@sparticuz"),
+    ];
+
+    for (const candidate of vercelBinCandidates) {
+      if (!fs.existsSync(candidate)) {
+        continue;
+      }
+
+      if (path.basename(candidate) === "bin") {
+        return chromium.executablePath(candidate);
+      }
+
+      const hashedPackageDir = fs
+        .readdirSync(candidate, { withFileTypes: true })
+        .find(
+          (entry) =>
+            entry.isDirectory() && entry.name.startsWith("chromium-"),
+        );
+
+      if (!hashedPackageDir) {
+        continue;
+      }
+
+      const hashedBinPath = path.join(candidate, hashedPackageDir.name, "bin");
+      if (fs.existsSync(hashedBinPath)) {
+        return chromium.executablePath(hashedBinPath);
+      }
+    }
+
     return chromium.executablePath();
   }
 
