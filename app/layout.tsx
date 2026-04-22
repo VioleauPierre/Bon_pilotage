@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Bon de pilotage",
   description:
-    "Formulaire de saisie, génération PDF et envoi e-mail pour les bons de pilotage.",
+    "Formulaire de saisie bon de pilotage",
 };
 
 export default function RootLayout({
