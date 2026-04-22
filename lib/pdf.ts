@@ -14,7 +14,7 @@ const COMMON_CHROME_PATHS = [
 ].filter(Boolean) as string[];
 
 async function resolveExecutablePath(
-  chromium: typeof import("@sparticuz/chromium").default,
+  chromium: typeof import("@sparticuz/chromium-min").default,
 ) {
   if (process.env.VERCEL) {
     return chromium.executablePath(
@@ -40,7 +40,7 @@ async function resolveExecutablePath(
 
 export async function renderPdfFromHtml(html: string) {
   const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
-    import("@sparticuz/chromium"),
+    import("@sparticuz/chromium-min"),
     import("puppeteer-core"),
   ]);
 
