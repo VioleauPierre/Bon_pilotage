@@ -1,10 +1,12 @@
 import { sendBonPilotageEmail } from "@/lib/email";
+import { createEmptySubmissionMemory } from "@/lib/form-memory";
 import { formatDateLabel, sanitizeFilePart } from "@/lib/format";
 import { renderPdfFromHtml } from "@/lib/pdf";
 import { renderBonPilotageHtml } from "@/lib/render-bon-pilotage-html";
-import { parseSubmission } from "@/lib/submission";
+import { parseSubmission, type ParsedSubmission } from "@/lib/submission";
 import { persistSubmissionMemoryFromDraft } from "@/lib/submission-memory-store";
 import { getBonPilotageTableName, getSupabaseAdminClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -23,7 +25,115 @@ function friendlyServerError(error: unknown) {
   return `Impossible d'envoyer le bon. ${message}`;
 }
 
+function buildInsertPayload(submission: ParsedSubmission, recipientEmail: string) {
+  return {
+    status: "queued",
+    bon_number: submission.bonNumber,
+    pilot_name: submission.pilotName,
+    pilot_names: submission.pilotNames,
+    transporter: submission.transporter,
+    vehicle_registration: submission.vehicleRegistration,
+    convoy_category: submission.convoyCategory,
+    decree_number: submission.decreeNumber,
+    driver_name: submission.driverName,
+    driver_signature: submission.driverSignature,
+    pickup_date: submission.pickupDate,
+    pickup_time: submission.pickupTime,
+    end_date: submission.endDate,
+    end_time: submission.endTime,
+    departure_city: submission.departureCity,
+    arrival_city: submission.arrivalCity,
+    total_km: submission.totalKm,
+    observations: submission.observations,
+    recipient_email: recipientEmail,
+    itinerary: submission.itinerary,
+  };
+}
+
+async function insertSubmission(
+  supabase: SupabaseClient,
+  table: string,
+  submission: ParsedSubmission,
+  recipientEmail: string,
+) {
+  const insertPayload = buildInsertPayload(submission, recipientEmail);
+
+  const insertResult = await supabase
+    .from(table)
+    .insert(insertPayload)
+    .select("id")
+    .single();
+
+  if (!insertResult.error) {
+    return insertResult.data?.id as string | null;
+  }
+
+  if (!/pilot_names|end_date|end_time/i.test(insertResult.error.message)) {
+    throw new Error(insertResult.error.message);
+  }
+
+  const legacyInsertPayload = {
+    status: insertPayload.status,
+    bon_number: insertPayload.bon_number,
+    pilot_name: insertPayload.pilot_name,
+    transporter: insertPayload.transporter,
+    vehicle_registration: insertPayload.vehicle_registration,
+    convoy_category: insertPayload.convoy_category,
+    decree_number: insertPayload.decree_number,
+    driver_name: insertPayload.driver_name,
+    driver_signature: insertPayload.driver_signature,
+    pickup_date: insertPayload.pickup_date,
+    pickup_time: insertPayload.pickup_time,
+    departure_city: insertPayload.departure_city,
+    arrival_city: insertPayload.arrival_city,
+    total_km: insertPayload.total_km,
+    observations: insertPayload.observations,
+    recipient_email: insertPayload.recipient_email,
+    itinerary: insertPayload.itinerary,
+  };
+
+  const legacyResult = await supabase
+    .from(table)
+    .insert(legacyInsertPayload)
+    .select("id")
+    .single();
+
+  if (legacyResult.error) {
+    throw new Error(legacyResult.error.message);
+  }
+
+  return legacyResult.data?.id as string | null;
+}
+
+async function markSubmissionSent(
+  supabase: SupabaseClient,
+  table: string,
+  insertedId: string | null,
+  fileName: string,
+  emailProviderId: string | null,
+) {
+  if (!insertedId) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from(table)
+    .update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      pdf_file_name: fileName,
+      email_provider_id: emailProviderId,
+    })
+    .eq("id", insertedId);
+
+  if (error) {
+    console.error("Unable to mark submission as sent", error);
+  }
+}
+
 export async function POST(request: Request) {
+  let supabase: SupabaseClient | null = null;
+  let table = getBonPilotageTableName();
   let insertedId: string | null = null;
 
   try {
@@ -41,86 +151,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, message: "Soumission reçue." });
     }
 
-    const supabase = getSupabaseAdminClient();
-    const table = getBonPilotageTableName();
     const recipientEmail = process.env.NOTIFICATION_EMAIL;
 
     if (!recipientEmail) {
       throw new Error("Variable d'environnement manquante: NOTIFICATION_EMAIL");
     }
 
-    const insertPayload = {
-      status: "queued",
-      bon_number: parsed.data.bonNumber,
-      pilot_name: parsed.data.pilotName,
-      pilot_names: parsed.data.pilotNames,
-      transporter: parsed.data.transporter,
-      vehicle_registration: parsed.data.vehicleRegistration,
-      convoy_category: parsed.data.convoyCategory,
-      decree_number: parsed.data.decreeNumber,
-      driver_name: parsed.data.driverName,
-      driver_signature: parsed.data.driverSignature,
-      pickup_date: parsed.data.pickupDate,
-      pickup_time: parsed.data.pickupTime,
-      end_date: parsed.data.endDate,
-      end_time: parsed.data.endTime,
-      departure_city: parsed.data.departureCity,
-      arrival_city: parsed.data.arrivalCity,
-      total_km: parsed.data.totalKm,
-      observations: parsed.data.observations,
-      recipient_email: recipientEmail,
-      itinerary: parsed.data.itinerary,
-    };
-
-    let { data: insertedRow, error: insertError } = await supabase
-      .from(table)
-      .insert(insertPayload)
-      .select("id")
-      .single();
-
-    if (
-      insertError &&
-      /pilot_names|end_date|end_time/i.test(insertError.message)
-    ) {
-      const legacyInsertPayload = {
-        status: insertPayload.status,
-        bon_number: insertPayload.bon_number,
-        pilot_name: insertPayload.pilot_name,
-        transporter: insertPayload.transporter,
-        vehicle_registration: insertPayload.vehicle_registration,
-        convoy_category: insertPayload.convoy_category,
-        decree_number: insertPayload.decree_number,
-        driver_name: insertPayload.driver_name,
-        driver_signature: insertPayload.driver_signature,
-        pickup_date: insertPayload.pickup_date,
-        pickup_time: insertPayload.pickup_time,
-        departure_city: insertPayload.departure_city,
-        arrival_city: insertPayload.arrival_city,
-        total_km: insertPayload.total_km,
-        observations: insertPayload.observations,
-        recipient_email: insertPayload.recipient_email,
-        itinerary: insertPayload.itinerary,
-      };
-
-      const legacyResult = await supabase
-        .from(table)
-        .insert(legacyInsertPayload)
-        .select("id")
-        .single();
-
-      insertedRow = legacyResult.data;
-      insertError = legacyResult.error;
+    try {
+      supabase = getSupabaseAdminClient();
+      insertedId = await insertSubmission(
+        supabase,
+        table,
+        parsed.data,
+        recipientEmail,
+      );
+    } catch (error) {
+      console.error("Unable to persist bon pilotage before email", error);
     }
-
-    if (insertError) {
-      throw new Error(insertError.message);
-    }
-
-    if (!insertedRow) {
-      throw new Error("La soumission n'a pas été enregistrée.");
-    }
-
-    insertedId = insertedRow.id;
 
     const documentData = {
       ...parsed.data,
@@ -140,21 +187,24 @@ export async function POST(request: Request) {
       fileName,
     });
 
-    const { error: updateError } = await supabase
-      .from(table)
-      .update({
-        status: "sent",
-        sent_at: new Date().toISOString(),
-        pdf_file_name: fileName,
-        email_provider_id: emailResult?.id ?? null,
-      })
-      .eq("id", insertedId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
+    if (supabase) {
+      await markSubmissionSent(
+        supabase,
+        table,
+        insertedId,
+        fileName,
+        emailResult?.id ?? null,
+      );
     }
 
-    const memory = await persistSubmissionMemoryFromDraft(supabase, parsed.data);
+    let memory = createEmptySubmissionMemory();
+    if (supabase) {
+      try {
+        memory = await persistSubmissionMemoryFromDraft(supabase, parsed.data);
+      } catch (error) {
+        console.error("Unable to persist bon pilotage memory", error);
+      }
+    }
 
     return NextResponse.json({
       ok: true,
@@ -163,13 +213,14 @@ export async function POST(request: Request) {
       message: `Bon ${parsed.data.bonNumber} généré le ${formatDateLabel(
         parsed.data.pickupDate,
       )}.`,
+      warning: insertedId ? undefined : "Bon envoyé, mais non enregistré en base Supabase.",
     });
   } catch (error) {
     if (insertedId) {
       try {
-        const supabase = getSupabaseAdminClient();
-        await supabase
-          .from(getBonPilotageTableName())
+        const fallbackSupabase = supabase ?? getSupabaseAdminClient();
+        await fallbackSupabase
+          .from(table)
           .update({
             status: "email_failed",
             email_error:
