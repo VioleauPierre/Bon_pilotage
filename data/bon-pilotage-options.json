@@ -1,0 +1,39 @@
+{
+  "pilotes": [
+    {
+      "id": "pilote_1",
+      "prenom": "Prénom 1"
+    },
+    {
+      "id": "pilote_2",
+      "prenom": "Prénom 2"
+    },
+    {
+      "id": "pilote_3",
+      "prenom": "Prénom 3"
+    },
+    {
+      "id": "pilote_4",
+      "prenom": "Prénom 4"
+    }
+  ],
+  "transporteurs": [
+    "Transports Martin",
+    "Transports Dupont",
+    "Logistique Bernard",
+    "Convoi Express",
+    "Route Services"
+  ],
+  "villesCourantes": [
+    "Paris",
+    "Lyon",
+    "Marseille",
+    "Toulouse",
+    "Bordeaux",
+    "Nantes",
+    "Lille",
+    "Rennes",
+    "Strasbourg",
+    "Montpellier"
+  ]
+}
