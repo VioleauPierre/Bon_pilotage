@@ -35,9 +35,11 @@ export function createEmptyItineraryRow(
 export function createInitialDraft(): SubmissionDraft {
   const now = new Date();
   const date = formatDateInput(now);
+  const time = formatTimeInput(now);
 
   return {
     bonNumber: createBonNumber(now),
+    pilotNames: [],
     pilotName: "",
     transporter: "",
     vehicleRegistration: "",
@@ -46,11 +48,13 @@ export function createInitialDraft(): SubmissionDraft {
     driverName: "",
     driverSignature: "",
     pickupDate: date,
-    pickupTime: formatTimeInput(now),
+    pickupTime: time,
+    endDate: date,
+    endTime: "",
     departureCity: "",
     arrivalCity: "",
     observations: "",
-    itinerary: [createEmptyItineraryRow({ date })],
+    itinerary: [createEmptyItineraryRow({ date, departureTime: time })],
     website: "",
   };
 }
@@ -60,13 +64,12 @@ export function resetDraftAfterSuccess(current: SubmissionDraft): SubmissionDraf
 
   return {
     ...fresh,
-    pilotName: current.pilotName,
+    pilotNames: current.pilotNames,
+    pilotName: current.pilotNames.join(", "),
     transporter: current.transporter,
     vehicleRegistration: current.vehicleRegistration,
     convoyCategory: current.convoyCategory,
-    decreeNumber: current.decreeNumber,
     driverName: current.driverName,
-    driverSignature: current.driverSignature,
     departureCity: current.departureCity,
     arrivalCity: current.arrivalCity,
   };
@@ -131,6 +134,7 @@ export function sanitizeFilePart(value: string) {
 export function buildPreviewData(draft: SubmissionDraft): BonPilotageDisplayData {
   return {
     ...draft,
+    pilotName: draft.pilotNames.join(", "),
     itinerary: filterFilledItineraryRows(draft.itinerary),
     totalKm: getDraftTotalKm(draft.itinerary),
     generatedAt: new Intl.DateTimeFormat("fr-FR", {
