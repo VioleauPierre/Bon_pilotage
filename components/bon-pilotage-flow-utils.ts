@@ -20,11 +20,11 @@ export const flowSteps: Array<{
   description: string;
 }> = [
   { id: "pilots", title: "Choix du pilote", description: "Coche un ou plusieurs pilotes." },
-  { id: "convoy", title: "Convoi", description: "Transporteur, categorie et chauffeur." },
-  { id: "timing", title: "Dates et trajet", description: "Depart, arrivee, prise en charge et fin." },
+  { id: "convoy", title: "Convoi", description: "Transporteur, catégorie et chauffeur." },
+  { id: "timing", title: "Dates et trajet", description: "Départ, arrivée, prise en charge et fin." },
   { id: "itinerary", title: "Trajets", description: "Les bornes du trajet sont reprises automatiquement." },
-  { id: "observations", title: "Observation", description: "Ajoute une note si necessaire." },
-  { id: "review", title: "Resume", description: "Verifie les blocs avant l'envoi." },
+  { id: "observations", title: "Observation", description: "Ajoute une note si nécessaire." },
+  { id: "review", title: "Résumé", description: "Vérifie les blocs avant l'envoi." },
 ];
 
 export const CONVOY_CATEGORIES = ["2ème catégorie", "3ème catégorie"] as const;
@@ -80,12 +80,12 @@ export function getPrefixSuggestions(values: string[], currentValue: string) {
 
 export function pilotCountLabel(count: number) {
   return count <= 1
-    ? `${count} pilote selectionne`
-    : `${count} pilotes selectionnes`;
+    ? `${count} pilote sélectionné`
+    : `${count} pilotes sélectionnés`;
 }
 
 export function dateTimeSummary(date: string, time: string) {
-  return [date, time].filter(Boolean).join(" a ") || "-";
+  return [date, time].filter(Boolean).join(" à ") || "-";
 }
 
 export function submitError(message: string) {
@@ -131,7 +131,7 @@ export function validateFlowStep(stepId: StepId, draft: SubmissionDraft) {
   switch (stepId) {
     case "pilots":
       return draft.pilotNames.length === 0
-        ? "Veuillez selectionner au moins un pilote."
+        ? "Veuillez sélectionner au moins un pilote."
         : null;
     case "convoy":
       if (isEmpty(draft.transporter)) {
@@ -158,13 +158,13 @@ export function validateFlowStep(stepId: StepId, draft: SubmissionDraft) {
       const start = toDateTime(draft.pickupDate, draft.pickupTime);
       const end = toDateTime(draft.endDate, draft.endTime);
       if (!start || !end) {
-        return "Veuillez verifier le format des dates et heures.";
+        return "Veuillez vérifier le format des dates et heures.";
       }
       if (end <= start) {
-        return "La date de fin de convoi doit etre posterieure a la date de prise en charge.";
+        return "La date de fin de convoi doit être postérieure à la date de prise en charge.";
       }
       if (isEmpty(draft.departureCity) || isEmpty(draft.arrivalCity)) {
-        return "Veuillez renseigner la ville de depart et la ville d'arrivee.";
+        return "Veuillez renseigner la ville de départ et la ville d'arrivée.";
       }
       return null;
     }
@@ -184,12 +184,12 @@ export function validateFlowStep(stepId: StepId, draft: SubmissionDraft) {
           "km",
         ];
         if (requiredValues.some((field) => isEmpty(row[field]))) {
-          return `Veuillez completer tous les champs de la ligne ${index + 1}.`;
+          return `Veuillez compléter tous les champs de la ligne ${index + 1}.`;
         }
 
         const km = Number.parseInt(row.km, 10);
         if (Number.isNaN(km) || km < 0) {
-          return `Le kilometrage de la ligne ${index + 1} est invalide.`;
+          return `Le kilométrage de la ligne ${index + 1} est invalide.`;
         }
       }
       return null;
