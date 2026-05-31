@@ -16,6 +16,11 @@ const optionalString = (max = 2000) =>
     .optional()
     .transform((value) => value ?? "");
 
+function toDateTime(date: string, time: string) {
+  const value = new Date(`${date}T${time}:00`);
+  return Number.isNaN(value.getTime()) ? null : value;
+}
+
 const itineraryRowSchema = z.object({
   date: z
     .string()
@@ -38,34 +43,67 @@ const itineraryRowSchema = z.object({
     .max(5000, "Le kilométrage semble incohérent."),
 });
 
-export const submissionSchema = z.object({
-  bonNumber: requiredString("Le numéro de bon", 40),
-  pilotName: requiredString("Le nom du pilote"),
-  transporter: requiredString("Le transporteur"),
-  vehicleRegistration: optionalString(80),
-  convoyCategory: requiredString("La catégorie du convoi"),
-  decreeNumber: optionalString(80),
-  driverName: requiredString("Le nom du chauffeur"),
-  driverSignature: optionalString(120),
-  pickupDate: z
-    .string()
-    .trim()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "La date de prise en charge est invalide."),
-  pickupTime: z
-    .string()
-    .trim()
-    .regex(/^\d{2}:\d{2}$/, "L'heure de prise en charge est invalide."),
-  departureCity: requiredString("La ville de départ"),
-  arrivalCity: requiredString("La ville d'arrivée"),
-  observations: optionalString(2000),
-  itinerary: z
-    .array(itineraryRowSchema)
-    .min(1, "Au moins une ligne d'itinéraire est nécessaire.")
-    .max(MAX_ITINERARY_ROWS, "Trop de lignes d'itinéraire."),
-  website: optionalString(200),
-});
+export const submissionSchema = z
+  .object({
+    bonNumber: requiredString("Le numéro de bon", 40),
+    pilotNames: z
+      .array(requiredString("Le nom du pilote"))
+      .min(1, "Au moins un pilote doit être sélectionné.")
+      .max(8, "Trop de pilotes sélectionnés."),
+    pilotName: optionalString(500),
+    transporter: requiredString("Le transporteur"),
+    vehicleRegistration: optionalString(80),
+    convoyCategory: z.enum(["2ème catégorie", "3ème catégorie"], {
+      error: "La catégorie du convoi est invalide.",
+    }),
+    decreeNumber: optionalString(80),
+    driverName: requiredString("Le nom du chauffeur"),
+    driverSignature: optionalString(120),
+    pickupDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "La date de prise en charge est invalide."),
+    pickupTime: z
+      .string()
+      .trim()
+      .regex(/^\d{2}:\d{2}$/, "L'heure de prise en charge est invalide."),
+    endDate: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "La date de fin de convoi est invalide."),
+    endTime: z
+      .string()
+      .trim()
+      .regex(/^\d{2}:\d{2}$/, "L'heure de fin de convoi est invalide."),
+    departureCity: requiredString("La ville de départ"),
+    arrivalCity: requiredString("La ville d'arrivée"),
+    observations: optionalString(2000),
+    itinerary: z
+      .array(itineraryRowSchema)
+      .min(1, "Au moins une ligne d'itinéraire est nécessaire.")
+      .max(MAX_ITINERARY_ROWS, "Trop de lignes d'itinéraire."),
+    website: optionalString(200),
+  })
+  .superRefine((data, context) => {
+    const start = toDateTime(data.pickupDate, data.pickupTime);
+    const end = toDateTime(data.endDate, data.endTime);
+
+    if (!start || !end) {
+      return;
+    }
+
+    if (end <= start) {
+      context.addIssue({
+        code: "custom",
+        path: ["endDate"],
+        message:
+          "La date de fin de convoi doit être postérieure à la date de prise en charge.",
+      });
+    }
+  });
 
 export type ParsedSubmission = z.infer<typeof submissionSchema> & {
+  pilotName: string;
   totalKm: number;
 };
 
@@ -83,11 +121,13 @@ export function parseSubmission(input: unknown):
   }
 
   const totalKm = result.data.itinerary.reduce((sum, row) => sum + row.km, 0);
+  const pilotName = result.data.pilotNames.join(", ");
 
   return {
     success: true,
     data: {
       ...result.data,
+      pilotName,
       totalKm,
     },
   };
