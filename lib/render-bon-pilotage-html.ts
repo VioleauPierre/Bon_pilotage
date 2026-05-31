@@ -15,17 +15,21 @@ function fillRows(data: BonPilotageDisplayData) {
   const rows = [...data.itinerary];
 
   while (rows.length < MAX_ITINERARY_ROWS) {
-    rows.push({
-      date: "",
-      departureCity: "",
-      departureTime: "",
-      arrivalCity: "",
-      arrivalTime: "",
-      km: "",
-    });
+    rows.push({ date: "", departureCity: "", departureTime: "", arrivalCity: "", arrivalTime: "", km: "" });
   }
 
   return rows.slice(0, MAX_ITINERARY_ROWS);
+}
+
+function formatPilots(data: BonPilotageDisplayData) {
+  return data.pilotNames.length > 0 ? data.pilotNames.join(", ") : data.pilotName;
+}
+
+function infoCell(label: string, value: string) {
+  return `<div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
+    <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">${escapeHtml(label)}</span>
+    <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(value)}</span>
+  </div>`;
 }
 
 export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
@@ -61,21 +65,14 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
     <style>
       @page { size: A4; margin: 0; }
       * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        background: #ffffff;
-        color: #111827;
-        font-family: Arial, Helvetica, sans-serif;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
+      body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     </style>
   </head>
   <body>
     <div style="width:794px;margin:0 auto;padding:20px;background:#ffffff;border:2px solid #111827;">
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px;font-size:12px;">
-        <span>Nom du pilote :</span>
-        <span style="display:inline-block;min-width:220px;margin-left:8px;padding-bottom:2px;border-bottom:1px solid #111827;font-weight:700;">${escapeHtml(data.pilotName || " ")}</span>
+        <span>Pilote(s) :</span>
+        <span style="display:inline-block;min-width:260px;margin-left:8px;padding-bottom:2px;border-bottom:1px solid #111827;font-weight:700;">${escapeHtml(formatPilots(data) || " ")}</span>
       </div>
 
       <div style="display:grid;grid-template-columns:1.08fr 0.92fr;gap:12px;margin-bottom:12px;">
@@ -86,7 +83,6 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
           <p style="margin:8px 0 0;font-size:13px;line-height:1.45;">Email : ${escapeHtml(COMPANY_INFO.email)}</p>
           <p style="margin:0;font-size:13px;line-height:1.45;">Tél. ${escapeHtml(COMPANY_INFO.phone)}</p>
         </div>
-
         <div style="border:2px solid #111827;min-height:120px;display:grid;grid-template-rows:1fr auto;">
           <div style="display:grid;place-items:center;min-height:74px;padding:10px;border-bottom:2px solid #111827;font-weight:800;font-size:22px;letter-spacing:0.04em;text-align:center;text-transform:uppercase;">Bon de pilotage</div>
           <div style="display:grid;place-items:center;min-height:44px;font-size:18px;font-weight:800;">N° ${escapeHtml(data.bonNumber)}</div>
@@ -95,64 +91,26 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
 
       <div>
         <div style="display:grid;grid-template-columns:1fr 1fr;">
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Transporteur</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.transporter)}</span>
-          </div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Immatriculation TR/SR</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.vehicleRegistration)}</span>
-          </div>
+          ${infoCell("Transporteur", data.transporter)}
+          ${infoCell("Immatriculation TR/SR", data.vehicleRegistration)}
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;">
           <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;display:grid;place-items:center;background:#111827;color:#ffffff;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;">Prestation</div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Catégorie du convoi</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.convoyCategory)}</span>
-          </div>
+          ${infoCell("Catégorie du convoi", data.convoyCategory)}
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;">
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">N° arrêté</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.decreeNumber || "néant")}</span>
-          </div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Nom du chauffeur</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.driverName)}</span>
-          </div>
+          ${infoCell("Nom du chauffeur", data.driverName)}
+          ${infoCell("Total km", `${String(totalKm || 0)} km`)}
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;">
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Date et heure de prise en charge demandées</span>
-            <span style="font-size:13px;font-weight:700;line-height:1.35;">Le ${escapeHtml(formatDateLabel(data.pickupDate))} à ${escapeHtml(formatTimeLabel(data.pickupTime))}</span>
-          </div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Signature</span>
-            <span style="font-size:17px;font-style:italic;font-weight:700;line-height:1.4;">${escapeHtml(data.driverSignature)}</span>
-          </div>
+          ${infoCell("Date et heure de prise en charge", `Le ${formatDateLabel(data.pickupDate)} à ${formatTimeLabel(data.pickupTime)}`)}
+          ${infoCell("Date et heure de fin de convoi", `Le ${formatDateLabel(data.endDate)} à ${formatTimeLabel(data.endTime)}`)}
         </div>
-
         <div style="display:grid;grid-template-columns:1fr 1fr;">
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Ville de départ</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.departureCity)}</span>
-          </div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Ville d'arrivée</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(data.arrivalCity)}</span>
-          </div>
+          ${infoCell("Ville de départ", data.departureCity)}
+          ${infoCell("Ville d'arrivée", data.arrivalCity)}
         </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;">
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
-            <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Total km</span>
-            <span style="font-size:14px;font-weight:700;line-height:1.4;">${escapeHtml(String(totalKm || 0))} km</span>
-          </div>
-          <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;font-size:11px;line-height:1.45;text-align:justify;">${escapeHtml(LIABILITY_NOTICE)}</div>
-        </div>
+        <div style="border:1px solid #111827;padding:8px 10px;min-height:48px;font-size:11px;line-height:1.45;text-align:justify;">${escapeHtml(LIABILITY_NOTICE)}</div>
       </div>
 
       <table style="width:100%;border-collapse:collapse;margin-top:12px;">
@@ -166,9 +124,7 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
             <th style="border:1px solid #111827;padding:8px 6px;background:#f1f5f9;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;text-align:center;width:18%;">km</th>
           </tr>
         </thead>
-        <tbody>
-          ${itineraryRows}
-        </tbody>
+        <tbody>${itineraryRows}</tbody>
       </table>
 
       <div style="border:2px solid #111827;min-height:108px;margin-top:12px;padding:10px 12px;">
