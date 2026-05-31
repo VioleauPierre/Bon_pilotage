@@ -1,3 +1,4 @@
+import { createEmptySubmissionMemory } from "@/lib/form-memory";
 import { fetchSubmissionMemory } from "@/lib/submission-memory-store";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { NextResponse } from "next/server";
@@ -10,15 +11,12 @@ export async function GET() {
 
     return NextResponse.json({ ok: true, memory });
   } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Impossible de charger les suggestions.",
-      },
-      { status: 500 },
-    );
+    console.error("Unable to load bon pilotage memory", error);
+
+    return NextResponse.json({
+      ok: true,
+      memory: createEmptySubmissionMemory(),
+      warning: "Suggestions indisponibles temporairement.",
+    });
   }
 }
