@@ -28,3 +28,37 @@ create table if not exists public.bon_pilotage_submissions (
 
 create index if not exists bon_pilotage_submissions_created_at_idx
   on public.bon_pilotage_submissions (created_at desc);
+
+create table if not exists public.bon_pilotage_memory_values (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  field text not null,
+  value text not null,
+  value_key text not null,
+  constraint bon_pilotage_memory_values_field_value_key_unique
+    unique (field, value_key)
+);
+
+create index if not exists bon_pilotage_memory_values_updated_at_idx
+  on public.bon_pilotage_memory_values (updated_at desc);
+
+create table if not exists public.bon_pilotage_pilot_profiles (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  pilot_name text not null,
+  pilot_key text not null,
+  transporter text not null default '',
+  vehicle_registration text not null default '',
+  convoy_category text not null default '',
+  driver_name text not null default '',
+  driver_signature text not null default '',
+  departure_city text not null default '',
+  arrival_city text not null default '',
+  constraint bon_pilotage_pilot_profiles_pilot_key_unique
+    unique (pilot_key)
+);
+
+create index if not exists bon_pilotage_pilot_profiles_updated_at_idx
+  on public.bon_pilotage_pilot_profiles (updated_at desc);

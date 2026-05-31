@@ -3,20 +3,21 @@
 Application Next.js deployable sur Vercel pour :
 
 - saisir un bon de pilotage depuis un formulaire responsive ;
-- générer un PDF à partir d'un template HTML fidèle au modèle ;
+- generer un PDF a partir d'un template HTML fidele au modele ;
 - envoyer le PDF par mail via Gmail SMTP ;
-- historiser chaque bon dans Supabase.
+- historiser chaque bon dans Supabase ;
+- conserver les suggestions et profils pilotes dans Supabase.
 
 ## Stack
 
 - Next.js App Router
 - Supabase Postgres
 - Gmail SMTP
-- Puppeteer Core + Chromium pour la génération PDF
+- Puppeteer Core + Chromium pour la generation PDF
 
-## Démarrage local
+## Demarrage local
 
-1. Installer les dépendances :
+1. Installer les dependances :
 
    ```bash
    npm install
@@ -32,18 +33,20 @@ Application Next.js deployable sur Vercel pour :
 
 4. Ouvrir `http://localhost:3000`.
 
-## Déploiement Vercel
+## Deploiement Vercel
 
-1. Créer un projet Vercel à partir du dépôt GitHub.
+1. Creer un projet Vercel a partir du depot GitHub.
 2. Ajouter les variables de `.env.example` dans `Settings > Environment Variables`.
-3. Déployer.
+3. Executer le SQL de [supabase/schema.sql](/c:/Users/viole/Documents/App_pilotage/supabase/schema.sql) dans Supabase.
+4. Deployer.
 
-## Base de données
+## Base de donnees
 
-Le schéma SQL est dans [supabase/schema.sql](/c:/Users/viole/Documents/App_pilotage/supabase/schema.sql).
+Le schema SQL est dans [supabase/schema.sql](/c:/Users/viole/Documents/App_pilotage/supabase/schema.sql).
 
 ## Remarques
 
-- Le formulaire s'auto-sauvegarde localement sur l'appareil pour éviter de ressaisir les informations fréquentes.
-- La route `POST /api/submissions` valide les données, stocke la soumission, génère le PDF puis l'envoie par mail.
-- En local, si Chromium n'est pas détecté automatiquement, renseigner `CHROME_EXECUTABLE_PATH`.
+- Les suggestions et profils pilotes sont charges depuis Supabase via `GET /api/memory`.
+- La route `POST /api/submissions` valide les donnees, stocke la soumission, genere le PDF puis l'envoie par mail.
+- Apres un envoi reussi, `POST /api/submissions` met aussi a jour la memoire Supabase.
+- En local, si Chromium n'est pas detecte automatiquement, renseigner `CHROME_EXECUTABLE_PATH`.

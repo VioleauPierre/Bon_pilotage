@@ -3,6 +3,7 @@ import { formatDateLabel, sanitizeFilePart } from "@/lib/format";
 import { renderPdfFromHtml } from "@/lib/pdf";
 import { renderBonPilotageHtml } from "@/lib/render-bon-pilotage-html";
 import { parseSubmission } from "@/lib/submission";
+import { persistSubmissionMemoryFromDraft } from "@/lib/submission-memory-store";
 import { getBonPilotageTableName, getSupabaseAdminClient } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 
@@ -99,9 +100,12 @@ export async function POST(request: Request) {
       throw new Error(updateError.message);
     }
 
+    const memory = await persistSubmissionMemoryFromDraft(supabase, parsed.data);
+
     return NextResponse.json({
       ok: true,
       bonNumber: parsed.data.bonNumber,
+      memory,
       message: `Bon ${parsed.data.bonNumber} généré le ${formatDateLabel(
         parsed.data.pickupDate,
       )}.`,

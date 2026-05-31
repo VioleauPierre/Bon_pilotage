@@ -1,13 +1,11 @@
 "use client";
 
-import { MAX_ITINERARY_ROWS, MEMORY_KEY, STORAGE_KEY } from "@/lib/constants";
+import { MAX_ITINERARY_ROWS } from "@/lib/constants";
 import {
   applyPilotProfile,
   createEmptySubmissionMemory,
   getFieldSuggestions,
   getFilteredPilotProfiles,
-  parseSubmissionMemory,
-  updateSubmissionMemory,
 } from "@/lib/form-memory";
 import {
   buildPreviewData,
@@ -281,51 +279,54 @@ function validateStep(stepId: StepId, draft: SubmissionDraft) {
 export function BonPilotageApp() {
   const [draft, setDraft] = useState<SubmissionDraft>(initialDraft);
   const [memory, setMemory] = useState<SubmissionMemory>(initialMemory);
-  const [hasHydrated, setHasHydrated] = useState(false);
+  const [isMemoryLoading, setIsMemoryLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<SubmissionStatus>({ type: "idle" });
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    try {
-      const rawDraft = window.localStorage.getItem(STORAGE_KEY);
-      const rawMemory = window.localStorage.getItem(MEMORY_KEY);
+    let ignore = false;
 
-      if (rawDraft) {
-        const parsedDraft = JSON.parse(rawDraft) as Partial<SubmissionDraft>;
-        setDraft((current) => ({
-          ...current,
-          ...parsedDraft,
-          itinerary:
-            parsedDraft.itinerary && parsedDraft.itinerary.length > 0
-              ? parsedDraft.itinerary
-              : current.itinerary,
-        }));
+    async function loadMemory() {
+      try {
+        const response = await fetch("/api/memory", { method: "GET" });
+        const result = (await response.json()) as {
+          ok?: boolean;
+          memory?: SubmissionMemory;
+          message?: string;
+        };
+
+        if (!response.ok || !result.ok || !result.memory) {
+          throw new Error(result.message || "Impossible de charger les suggestions.");
+        }
+
+        if (!ignore) {
+          setMemory(result.memory);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setMemory(createEmptySubmissionMemory());
+          setStatus({
+            type: "error",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Impossible de charger les suggestions.",
+          });
+        }
+      } finally {
+        if (!ignore) {
+          setIsMemoryLoading(false);
+        }
       }
-
-      setMemory(parseSubmissionMemory(rawMemory));
-    } catch {
-      setMemory(createEmptySubmissionMemory());
-    } finally {
-      setHasHydrated(true);
     }
+
+    loadMemory();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  useEffect(() => {
-    if (!hasHydrated) {
-      return;
-    }
-
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-  }, [draft, hasHydrated]);
-
-  useEffect(() => {
-    if (!hasHydrated) {
-      return;
-    }
-
-    window.localStorage.setItem(MEMORY_KEY, JSON.stringify(memory));
-  }, [memory, hasHydrated]);
 
   const previewData = buildPreviewData(draft);
   const step = steps[currentStep];
@@ -507,13 +508,16 @@ export function BonPilotageApp() {
         ok?: boolean;
         message?: string;
         bonNumber?: string;
+        memory?: SubmissionMemory;
       };
 
       if (!response.ok || !result.ok) {
         throw new Error(result.message || "La soumission a echoue.");
       }
 
-      setMemory((current) => updateSubmissionMemory(current, draft));
+      if (result.memory) {
+        setMemory(result.memory);
+      }
       setDraft((current) => resetDraftAfterSuccess(current));
       setCurrentStep(0);
       setStatus({
@@ -624,7 +628,9 @@ export function BonPilotageApp() {
 
             <div className="pilot-section">
               <span className="suggestion-title">Pilotes enregistres</span>
-              {pilotProfiles.length > 0 ? (
+              {isMemoryLoading ? (
+                <div className="empty-card">Chargement des pilotes enregistres...</div>
+              ) : pilotProfiles.length > 0 ? (
                 <div className="pilot-grid">
                   {pilotProfiles.map((profile) => {
                     const isActive =

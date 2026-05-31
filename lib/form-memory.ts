@@ -5,7 +5,7 @@ import type {
   SuggestionField,
 } from "@/lib/types";
 
-const SUGGESTION_FIELDS: SuggestionField[] = [
+export const SUGGESTION_FIELDS: SuggestionField[] = [
   "pilotName",
   "transporter",
   "vehicleRegistration",
@@ -176,7 +176,7 @@ export function applyPilotProfile(
 
 export function updateSubmissionMemory(
   currentMemory: SubmissionMemory,
-  draft: SubmissionDraft,
+  draft: Pick<SubmissionDraft, SuggestionField>,
 ) {
   const memory = createEmptySubmissionMemory();
 
