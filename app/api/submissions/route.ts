@@ -10,6 +10,19 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+function friendlyServerError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : "Une erreur inattendue est survenue.";
+
+  if (message.startsWith("Impossible d'envoyer le bon.")) {
+    return message;
+  }
+
+  return `Impossible d'envoyer le bon. ${message}`;
+}
+
 export async function POST(request: Request) {
   let insertedId: string | null = null;
 
@@ -19,7 +32,7 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, message: parsed.message },
+        { ok: false, message: friendlyServerError(new Error(parsed.message)) },
         { status: 400 },
       );
     }
@@ -40,6 +53,7 @@ export async function POST(request: Request) {
       status: "queued",
       bon_number: parsed.data.bonNumber,
       pilot_name: parsed.data.pilotName,
+      pilot_names: parsed.data.pilotNames,
       transporter: parsed.data.transporter,
       vehicle_registration: parsed.data.vehicleRegistration,
       convoy_category: parsed.data.convoyCategory,
@@ -48,6 +62,8 @@ export async function POST(request: Request) {
       driver_signature: parsed.data.driverSignature,
       pickup_date: parsed.data.pickupDate,
       pickup_time: parsed.data.pickupTime,
+      end_date: parsed.data.endDate,
+      end_time: parsed.data.endTime,
       departure_city: parsed.data.departureCity,
       arrival_city: parsed.data.arrivalCity,
       total_km: parsed.data.totalKm,
@@ -56,14 +72,52 @@ export async function POST(request: Request) {
       itinerary: parsed.data.itinerary,
     };
 
-    const { data: insertedRow, error: insertError } = await supabase
+    let { data: insertedRow, error: insertError } = await supabase
       .from(table)
       .insert(insertPayload)
       .select("id")
       .single();
 
+    if (
+      insertError &&
+      /pilot_names|end_date|end_time/i.test(insertError.message)
+    ) {
+      const legacyInsertPayload = {
+        status: insertPayload.status,
+        bon_number: insertPayload.bon_number,
+        pilot_name: insertPayload.pilot_name,
+        transporter: insertPayload.transporter,
+        vehicle_registration: insertPayload.vehicle_registration,
+        convoy_category: insertPayload.convoy_category,
+        decree_number: insertPayload.decree_number,
+        driver_name: insertPayload.driver_name,
+        driver_signature: insertPayload.driver_signature,
+        pickup_date: insertPayload.pickup_date,
+        pickup_time: insertPayload.pickup_time,
+        departure_city: insertPayload.departure_city,
+        arrival_city: insertPayload.arrival_city,
+        total_km: insertPayload.total_km,
+        observations: insertPayload.observations,
+        recipient_email: insertPayload.recipient_email,
+        itinerary: insertPayload.itinerary,
+      };
+
+      const legacyResult = await supabase
+        .from(table)
+        .insert(legacyInsertPayload)
+        .select("id")
+        .single();
+
+      insertedRow = legacyResult.data;
+      insertError = legacyResult.error;
+    }
+
     if (insertError) {
       throw new Error(insertError.message);
+    }
+
+    if (!insertedRow) {
+      throw new Error("La soumission n'a pas été enregistrée.");
     }
 
     insertedId = insertedRow.id;
@@ -132,10 +186,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Une erreur inattendue est survenue.",
+        message: friendlyServerError(error),
       },
       { status: 500 },
     );
