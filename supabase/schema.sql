@@ -7,6 +7,7 @@ create table if not exists public.bon_pilotage_submissions (
   status text not null default 'queued',
   bon_number text not null,
   pilot_name text not null,
+  pilot_names jsonb not null default '[]'::jsonb,
   transporter text not null,
   vehicle_registration text not null default '',
   convoy_category text not null,
@@ -15,6 +16,8 @@ create table if not exists public.bon_pilotage_submissions (
   driver_signature text not null default '',
   pickup_date date not null,
   pickup_time text not null,
+  end_date date not null,
+  end_time text not null,
   departure_city text not null,
   arrival_city text not null,
   total_km integer not null default 0,
@@ -25,6 +28,22 @@ create table if not exists public.bon_pilotage_submissions (
   email_error text,
   itinerary jsonb not null default '[]'::jsonb
 );
+
+alter table public.bon_pilotage_submissions
+  add column if not exists pilot_names jsonb not null default '[]'::jsonb;
+
+alter table public.bon_pilotage_submissions
+  add column if not exists end_date date;
+
+update public.bon_pilotage_submissions
+  set end_date = pickup_date
+  where end_date is null;
+
+alter table public.bon_pilotage_submissions
+  alter column end_date set not null;
+
+alter table public.bon_pilotage_submissions
+  add column if not exists end_time text not null default '';
 
 create index if not exists bon_pilotage_submissions_created_at_idx
   on public.bon_pilotage_submissions (created_at desc);
