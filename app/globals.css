@@ -1,19 +1,23 @@
 :root {
-  --bg: #ece6da;
-  --surface: rgba(255, 255, 255, 0.92);
-  --surface-soft: rgba(255, 255, 255, 0.72);
-  --ink: #101827;
-  --muted: #667085;
-  --line: rgba(16, 24, 39, 0.1);
-  --line-strong: rgba(16, 24, 39, 0.18);
-  --accent: #b5522b;
-  --accent-deep: #1f5a59;
-  --accent-soft: rgba(181, 82, 43, 0.12);
-  --success: #18794e;
-  --danger: #b42318;
-  --shadow: 0 26px 70px rgba(16, 24, 39, 0.14);
-  --font-body: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
-  --font-display: "Bahnschrift", "Trebuchet MS", sans-serif;
+  --bg: #f1f2f4;
+  --surface: #ffffff;
+  --surface-soft: #f6f7f9;
+  --surface-strong: #e4e6eb;
+  --ink: #202124;
+  --muted: #666b73;
+  --line: #d6d9de;
+  --line-strong: #b8bdc7;
+  --yellow: #ffcc00;
+  --yellow-soft: #fff3bf;
+  --red: #d71920;
+  --red-deep: #a50f15;
+  --grey: #5f6368;
+  --success: #188038;
+  --danger: #d71920;
+  --shadow: 0 8px 22px rgba(32, 33, 36, 0.16);
+  --shadow-soft: 0 2px 8px rgba(32, 33, 36, 0.12);
+  --font-body: "Roboto", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Roboto Condensed", "Segoe UI", sans-serif;
 }
 
 * {
@@ -30,9 +34,8 @@ body {
   color: var(--ink);
   font-family: var(--font-body);
   background:
-    radial-gradient(circle at top left, rgba(31, 90, 89, 0.18), transparent 24rem),
-    radial-gradient(circle at top right, rgba(181, 82, 43, 0.18), transparent 22rem),
-    linear-gradient(180deg, #f3efe6 0%, #e9e1d5 100%);
+    linear-gradient(135deg, rgba(255, 204, 0, 0.18) 0 16%, transparent 16% 100%),
+    linear-gradient(180deg, #f7f8fa 0%, var(--bg) 100%);
 }
 
 button,
@@ -56,46 +59,50 @@ button {
   width: min(100%, 560px);
   min-height: calc(100vh - 32px);
   margin: 0 auto;
-  padding: 18px;
+  padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 32px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.94));
-  backdrop-filter: blur(18px);
+  border-radius: 28px;
+  background: #f8f9fa;
   box-shadow: var(--shadow);
 }
 
 .app-topbar {
   display: grid;
   gap: 12px;
+  padding: 6px 4px 0;
 }
 
 .app-brand {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .app-brand h1 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(1.7rem, 5vw, 2.4rem);
-  line-height: 1;
-  text-transform: uppercase;
-  letter-spacing: -0.04em;
+  display: none;
+}
+
+.app-kicker {
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--yellow);
+  color: #1f1f1f;
+  box-shadow: var(--shadow-soft);
 }
 
 .app-kicker,
 .question-kicker,
 .suggestion-title,
 .review-label {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.app-kicker,
-.question-kicker {
-  color: var(--accent-deep);
+.question-kicker,
+.suggestion-title {
+  color: var(--red);
 }
 
 .app-meta {
@@ -104,23 +111,23 @@ button {
 }
 
 .app-step-label {
-  color: var(--muted);
+  color: var(--grey);
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .progress-track {
   overflow: hidden;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
-  background: rgba(16, 24, 39, 0.08);
+  background: var(--surface-strong);
 }
 
 .progress-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+  background: linear-gradient(90deg, var(--yellow) 0%, var(--red) 100%);
 }
 
 .question-flow {
@@ -128,28 +135,28 @@ button {
   grid-template-rows: 1fr auto;
   gap: 16px;
   min-height: 0;
-  flex: 1 1 auto;
 }
 
 .question-stage {
-  animation: fade-up 0.22s ease;
+  animation: fade-up 0.18s ease;
 }
 
 .question-card {
   display: grid;
   gap: 16px;
-  padding: 20px;
+  padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 26px;
+  border-radius: 24px;
   background: var(--surface);
-  box-shadow: 0 16px 40px rgba(16, 24, 39, 0.08);
+  box-shadow: var(--shadow-soft);
 }
 
 .question-title {
   margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  line-height: 1.08;
-  letter-spacing: -0.04em;
+  font-size: clamp(1.35rem, 4vw, 1.9rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: var(--ink);
 }
 
 .question-description,
@@ -159,14 +166,19 @@ button {
 .review-route-main {
   margin: 0;
   color: var(--muted);
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .question-label,
 .field label {
   font-size: 0.94rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--ink);
+}
+
+.field-optional {
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .question-input,
@@ -175,26 +187,27 @@ button {
   width: 100%;
   min-height: 56px;
   padding: 15px 16px;
-  border: 1px solid var(--line-strong);
-  border-radius: 18px;
-  background: #fff;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
   color: var(--ink);
   outline: none;
   transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.18s ease;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
 }
 
 .question-input:focus,
 .question-textarea:focus,
 .field input:focus {
-  border-color: rgba(181, 82, 43, 0.68);
-  box-shadow: 0 0 0 4px rgba(181, 82, 43, 0.12);
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 4px rgba(255, 204, 0, 0.28);
+  background: #fffdf2;
 }
 
 .question-textarea {
-  min-height: 180px;
+  min-height: 170px;
   resize: vertical;
 }
 
@@ -219,29 +232,32 @@ button {
   justify-content: center;
   min-height: 46px;
   padding: 0 16px;
-  border-radius: 16px;
+  border-radius: 999px;
   cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 0.01em;
   transition:
-    transform 0.18s ease,
-    opacity 0.18s ease,
-    background 0.18s ease,
-    border-color 0.18s ease;
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    background 0.16s ease,
+    border-color 0.16s ease;
 }
 
 .inline-action,
 .ghost-inline,
 .suggestion-chip,
 .ghost-button {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--line-strong);
+  background: #ffffff;
   color: var(--ink);
+  box-shadow: 0 1px 2px rgba(32, 33, 36, 0.08);
 }
 
 .button {
-  background: linear-gradient(135deg, var(--accent) 0%, #d06b34 100%);
-  color: #fff;
-  box-shadow: 0 12px 24px rgba(181, 82, 43, 0.22);
-  font-weight: 800;
+  background: var(--red);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.24);
 }
 
 .inline-action:hover,
@@ -251,6 +267,7 @@ button {
 .button:hover,
 .pilot-card:hover {
   transform: translateY(-1px);
+  box-shadow: var(--shadow-soft);
 }
 
 .inline-action:disabled,
@@ -258,7 +275,7 @@ button {
 .suggestion-chip:disabled,
 .ghost-button:disabled,
 .button:disabled {
-  opacity: 0.5;
+  opacity: 0.48;
   cursor: not-allowed;
   transform: none;
 }
@@ -276,10 +293,16 @@ button {
 }
 
 .suggestion-chip {
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 999px;
+  min-height: 42px;
+  padding: 0 15px;
   background: var(--surface-soft);
+}
+
+.suggestion-chip.pilot-card-active,
+.pilot-card-active {
+  border-color: var(--red);
+  background: linear-gradient(135deg, var(--yellow-soft) 0%, #ffffff 52%, rgba(215, 25, 32, 0.08) 100%);
+  box-shadow: 0 0 0 2px rgba(215, 25, 32, 0.12);
 }
 
 .pilot-grid {
@@ -293,19 +316,17 @@ button {
   width: 100%;
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.86);
+  border-left: 8px solid var(--yellow);
+  border-radius: 18px;
+  background: #ffffff;
+  color: var(--ink);
   text-align: left;
-}
-
-.pilot-card-active {
-  border-color: rgba(181, 82, 43, 0.4);
-  background: rgba(181, 82, 43, 0.1);
+  box-shadow: 0 1px 3px rgba(32, 33, 36, 0.1);
 }
 
 .pilot-name {
-  font-size: 1rem;
-  font-weight: 800;
+  font-size: 1.02rem;
+  font-weight: 900;
 }
 
 .pilot-meta,
@@ -317,23 +338,26 @@ button {
 .pilot-badge,
 .route-total {
   width: fit-content;
-  padding: 7px 12px;
+  padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(31, 90, 89, 0.12);
-  color: var(--accent-deep);
+  background: var(--yellow);
+  color: #1f1f1f;
   font-size: 0.82rem;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .empty-card {
   padding: 16px;
   border: 1px dashed var(--line-strong);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--surface-soft);
 }
 
 .route-toolbar {
   flex-wrap: wrap;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--surface-soft);
 }
 
 .route-toolbar-actions,
@@ -358,11 +382,17 @@ button {
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: var(--surface-soft);
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(32, 33, 36, 0.08);
+}
+
+.route-card {
+  border-left: 6px solid var(--red);
 }
 
 .route-index {
-  font-weight: 800;
+  font-weight: 900;
+  color: var(--red-deep);
 }
 
 .route-grid {
@@ -387,6 +417,7 @@ button {
 .review-block h3 {
   margin: 0;
   font-size: 0.98rem;
+  color: var(--red);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -407,9 +438,13 @@ button {
   border-bottom: 0;
 }
 
+.review-label {
+  color: var(--grey);
+}
+
 .review-value {
   font-size: 0.98rem;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.45;
 }
 
@@ -419,13 +454,14 @@ button {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(16, 24, 39, 0.04);
+  background: var(--surface-soft);
+  border-left: 5px solid var(--yellow);
 }
 
 .review-route-km,
 .review-total {
-  font-weight: 800;
-  color: var(--accent);
+  font-weight: 900;
+  color: var(--red);
 }
 
 .status {
@@ -433,15 +469,16 @@ button {
   border-radius: 18px;
   font-size: 0.94rem;
   line-height: 1.5;
+  font-weight: 800;
 }
 
 .status-success {
-  background: rgba(24, 121, 78, 0.1);
+  background: rgba(24, 128, 56, 0.12);
   color: var(--success);
 }
 
 .status-error {
-  background: rgba(180, 35, 24, 0.1);
+  background: rgba(215, 25, 32, 0.12);
   color: var(--danger);
 }
 
@@ -450,7 +487,7 @@ button {
   bottom: 0;
   margin-top: auto;
   padding: 14px 0 4px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96) 24%);
+  background: linear-gradient(180deg, rgba(248, 249, 250, 0), rgba(248, 249, 250, 0.98) 24%);
 }
 
 .visually-hidden {
@@ -468,7 +505,7 @@ button {
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
 
   to {
@@ -487,7 +524,7 @@ button {
     min-height: 100vh;
     border-radius: 0;
     border: 0;
-    padding: 18px 14px;
+    padding: 14px;
   }
 
   .route-grid,
