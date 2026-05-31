@@ -13,6 +13,7 @@ export type ItineraryRow = Omit<ItineraryDraftRow, "km"> & {
 
 export type SubmissionDraft = {
   bonNumber: string;
+  pilotNames: string[];
   pilotName: string;
   transporter: string;
   vehicleRegistration: string;
@@ -22,6 +23,8 @@ export type SubmissionDraft = {
   driverSignature: string;
   pickupDate: string;
   pickupTime: string;
+  endDate: string;
+  endTime: string;
   departureCity: string;
   arrivalCity: string;
   observations: string;
@@ -59,6 +62,7 @@ export type SubmissionMemory = {
 
 export type BonPilotageDisplayData = {
   bonNumber: string;
+  pilotNames: string[];
   pilotName: string;
   transporter: string;
   vehicleRegistration: string;
@@ -68,6 +72,8 @@ export type BonPilotageDisplayData = {
   driverSignature: string;
   pickupDate: string;
   pickupTime: string;
+  endDate: string;
+  endTime: string;
   departureCity: string;
   arrivalCity: string;
   observations: string;
