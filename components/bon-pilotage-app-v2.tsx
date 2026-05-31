@@ -67,6 +67,7 @@ export function BonPilotageAppV2() {
   const [status, setStatus] = useState<Status>({ type: "idle" });
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReviewConfirmed, setIsReviewConfirmed] = useState(false);
 
   const step = flowSteps[currentStep];
   const previewData = buildPreviewData(draft);
@@ -106,8 +107,13 @@ export function BonPilotageAppV2() {
     setStatus((current) => (current.type === "idle" ? current : { type: "idle" }));
   }
 
+  function invalidateReview() {
+    setIsReviewConfirmed(false);
+  }
+
   function updateTextField(field: TextField, value: string) {
     clearStatus();
+    invalidateReview();
     setDraft((current) => {
       const next = { ...current, [field]: value } as SubmissionDraft;
       if (["pickupDate", "pickupTime", "endDate", "endTime", "departureCity", "arrivalCity"].includes(field)) {
@@ -119,6 +125,7 @@ export function BonPilotageAppV2() {
 
   function togglePilot(pilotName: string) {
     clearStatus();
+    invalidateReview();
     setDraft((current) => {
       const pilotNames = current.pilotNames.includes(pilotName)
         ? current.pilotNames.filter((name) => name !== pilotName)
@@ -129,6 +136,7 @@ export function BonPilotageAppV2() {
 
   function updateItinerary(index: number, field: keyof ItineraryDraftRow, value: string) {
     clearStatus();
+    invalidateReview();
     setDraft((current) => {
       const itinerary = [...current.itinerary];
       itinerary[index] = { ...itinerary[index], [field]: value };
@@ -138,6 +146,7 @@ export function BonPilotageAppV2() {
 
   function addItineraryRow() {
     clearStatus();
+    invalidateReview();
     setDraft((current) => {
       if (current.itinerary.length >= MAX_ITINERARY_ROWS) return current;
       const itinerary = current.itinerary.map((row) => ({ ...row }));
@@ -150,6 +159,7 @@ export function BonPilotageAppV2() {
 
   function removeItineraryRow(index: number) {
     clearStatus();
+    invalidateReview();
     setDraft((current) => {
       const itinerary = current.itinerary.length === 1
         ? [createEmptyItineraryRow({ date: current.pickupDate })]
@@ -160,6 +170,7 @@ export function BonPilotageAppV2() {
 
   function reuseMainRoute() {
     clearStatus();
+    invalidateReview();
     setDraft((current) => syncItineraryBoundaries({
       ...current,
       itinerary: [createEmptyItineraryRow({
@@ -174,6 +185,7 @@ export function BonPilotageAppV2() {
 
   function goToStep(stepId: StepId) {
     clearStatus();
+    setIsReviewConfirmed(false);
     const index = flowSteps.findIndex((item) => item.id === stepId);
     if (index >= 0) setCurrentStep(index);
   }
@@ -188,8 +200,31 @@ export function BonPilotageAppV2() {
     setCurrentStep((index) => Math.min(index + 1, flowSteps.length - 1));
   }
 
+  function confirmReview() {
+    for (const item of flowSteps) {
+      if (item.id === "review") break;
+      const error = validateFlowStep(item.id, draft);
+      if (error) {
+        goToStep(item.id);
+        setStatus({ type: "error", message: error });
+        return;
+      }
+    }
+
+    setIsReviewConfirmed(true);
+    setStatus({ type: "success", message: "Résumé validé. Tu peux maintenant envoyer le PDF." });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!isReviewConfirmed) {
+      setStatus({
+        type: "error",
+        message: "Valide d'abord le résumé avant d'envoyer le PDF.",
+      });
+      return;
+    }
 
     for (const item of flowSteps) {
       if (item.id === "review") break;
@@ -214,14 +249,15 @@ export function BonPilotageAppV2() {
         body: JSON.stringify(payload),
       });
       const result = (await response.json()) as { ok?: boolean; message?: string; bonNumber?: string; memory?: SubmissionMemory };
-      if (!response.ok || !result.ok) throw new Error(result.message || "La soumission a echoue.");
+      if (!response.ok || !result.ok) throw new Error(result.message || "La soumission a échoué.");
       if (result.memory) setMemory(result.memory);
       setDraft((current) => resetDraftAfterSuccess(current));
       setCurrentStep(0);
-      setStatus({ type: "success", message: `Le bon ${result.bonNumber || draft.bonNumber} a ete genere et envoye par e-mail.` });
+      setIsReviewConfirmed(false);
+      setStatus({ type: "success", message: `Le bon ${result.bonNumber || draft.bonNumber} a été généré et envoyé par e-mail.` });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Une erreur inattendue est survenue.";
-      setStatus({ type: "error", message: submitError(`${message} Corrige le formulaire puis reessaie.`) });
+      setStatus({ type: "error", message: submitError(`${message} Corrige le formulaire puis réessaie.`) });
     } finally {
       setIsSubmitting(false);
     }
@@ -273,7 +309,7 @@ export function BonPilotageAppV2() {
                 return (
                   <button key={pilotName} className={`pilot-card${selected ? " pilot-card-active" : ""}`} type="button" onClick={() => togglePilot(pilotName)}>
                     <span className="pilot-name">{pilotName}</span>
-                    <span className="pilot-meta">{selected ? "Selectionne" : "Disponible"}</span>
+                    <span className="pilot-meta">{selected ? "Sélectionné" : "Disponible"}</span>
                   </button>
                 );
               })}
@@ -291,7 +327,7 @@ export function BonPilotageAppV2() {
               {renderField({ field: "vehicleRegistration", label: "Immatriculation TR/SR", placeholder: "AB-123-CD", optional: true })}
             </div>
             <div className="suggestion-stack">
-              <span className="suggestion-title">Categorie de convoi</span>
+              <span className="suggestion-title">Catégorie de convoi</span>
               <div className="suggestion-row">
                 {CONVOY_CATEGORIES.map((category) => (
                   <button key={category} className={`suggestion-chip${draft.convoyCategory === category ? " pilot-card-active" : ""}`} type="button" onClick={() => updateTextField("convoyCategory", category)}>
@@ -314,8 +350,8 @@ export function BonPilotageAppV2() {
               {renderField({ field: "pickupTime", label: "Heure prise en charge", type: "time" })}
               {renderField({ field: "endDate", label: "Date fin de convoi", type: "date" })}
               {renderField({ field: "endTime", label: "Heure fin de convoi", type: "time" })}
-              {renderField({ field: "departureCity", label: "Ville depart", values: cities, placeholder: "Rechercher ou saisir" })}
-              {renderField({ field: "arrivalCity", label: "Ville arrivee", values: cities, placeholder: "Rechercher ou saisir" })}
+              {renderField({ field: "departureCity", label: "Ville départ", values: cities, placeholder: "Rechercher ou saisir" })}
+              {renderField({ field: "arrivalCity", label: "Ville arrivée", values: cities, placeholder: "Rechercher ou saisir" })}
             </div>
           </section>
         );
@@ -325,15 +361,15 @@ export function BonPilotageAppV2() {
             <span className="question-kicker">Trajets</span>
             <h2 className="question-title">{step.title}</h2>
             <p className="question-description">{step.description}</p>
-            <div className="route-toolbar"><div className="route-total">{previewData.totalKm || 0} km cumules</div><div className="route-toolbar-actions"><button className="inline-action" type="button" onClick={reuseMainRoute}>Reprendre le trajet</button><button className="inline-action" type="button" onClick={addItineraryRow} disabled={draft.itinerary.length >= MAX_ITINERARY_ROWS}>Ajouter une ligne</button></div></div>
+            <div className="route-toolbar"><div className="route-total">{previewData.totalKm || 0} km cumulés</div><div className="route-toolbar-actions"><button className="inline-action" type="button" onClick={reuseMainRoute}>Reprendre le trajet</button><button className="inline-action" type="button" onClick={addItineraryRow} disabled={draft.itinerary.length >= MAX_ITINERARY_ROWS}>Ajouter une ligne</button></div></div>
             <datalist id="city-options">{cities.map((city) => <option key={city} value={city} />)}</datalist>
             <div className="route-list">{draft.itinerary.map((row, index) => <div className="route-card" key={`route-${index}`}><div className="route-card-head"><span className="route-index">Ligne {index + 1}</span><button className="ghost-inline" type="button" onClick={() => removeItineraryRow(index)}>Supprimer</button></div><div className="route-grid">
               <div className="field"><label htmlFor={`itinerary-date-${index}`}>Date</label><input id={`itinerary-date-${index}`} type="date" value={row.date} onChange={(event) => updateItinerary(index, "date", event.target.value)} /></div>
               <div className="field"><label htmlFor={`itinerary-km-${index}`}>km</label><input id={`itinerary-km-${index}`} type="number" min="0" step="1" value={row.km} onChange={(event) => updateItinerary(index, "km", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-departure-${index}`}>Depart</label><input id={`itinerary-departure-${index}`} list="city-options" value={row.departureCity} onChange={(event) => updateItinerary(index, "departureCity", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-departure-time-${index}`}>Heure depart</label><input id={`itinerary-departure-time-${index}`} type="time" value={row.departureTime} onChange={(event) => updateItinerary(index, "departureTime", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-arrival-${index}`}>Arrivee</label><input id={`itinerary-arrival-${index}`} list="city-options" value={row.arrivalCity} onChange={(event) => updateItinerary(index, "arrivalCity", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-arrival-time-${index}`}>Heure arrivee</label><input id={`itinerary-arrival-time-${index}`} type="time" value={row.arrivalTime} onChange={(event) => updateItinerary(index, "arrivalTime", event.target.value)} /></div>
+              <div className="field"><label htmlFor={`itinerary-departure-${index}`}>Départ</label><input id={`itinerary-departure-${index}`} list="city-options" value={row.departureCity} onChange={(event) => updateItinerary(index, "departureCity", event.target.value)} /></div>
+              <div className="field"><label htmlFor={`itinerary-departure-time-${index}`}>Heure départ</label><input id={`itinerary-departure-time-${index}`} type="time" value={row.departureTime} onChange={(event) => updateItinerary(index, "departureTime", event.target.value)} /></div>
+              <div className="field"><label htmlFor={`itinerary-arrival-${index}`}>Arrivée</label><input id={`itinerary-arrival-${index}`} list="city-options" value={row.arrivalCity} onChange={(event) => updateItinerary(index, "arrivalCity", event.target.value)} /></div>
+              <div className="field"><label htmlFor={`itinerary-arrival-time-${index}`}>Heure arrivée</label><input id={`itinerary-arrival-time-${index}`} type="time" value={row.arrivalTime} onChange={(event) => updateItinerary(index, "arrivalTime", event.target.value)} /></div>
             </div></div>)}</div>
           </section>
         );
@@ -341,13 +377,14 @@ export function BonPilotageAppV2() {
         return <section className="question-card"><span className="question-kicker">Observation</span><h2 className="question-title">{step.title}</h2><p className="question-description">{step.description}</p><label className="question-label" htmlFor="observations">Notes libres</label><textarea id="observations" className="question-textarea" value={draft.observations} onChange={(event) => updateTextField("observations", event.target.value)} placeholder="Remarques, circulation, consignes..." /></section>;
       case "review":
         return (
-          <section className="question-card review-card"><span className="question-kicker">Resume</span><h2 className="question-title">{step.title}</h2><p className="question-description">{step.description}</p><div className="review-grid">
-            <div className="review-block"><div className="review-block-head"><h3>Pilotes</h3><button className="ghost-inline" type="button" onClick={() => goToStep("pilots")}>Modifier</button></div><SummaryRow label="Selection" value={draft.pilotNames.join(", ")} /><SummaryRow label="Nombre" value={pilotCountLabel(draft.pilotNames.length)} /><SummaryRow label="Numero de bon" value={draft.bonNumber} /></div>
-            <div className="review-block"><div className="review-block-head"><h3>Convoi</h3><button className="ghost-inline" type="button" onClick={() => goToStep("convoy")}>Modifier</button></div><SummaryRow label="Transporteur" value={draft.transporter} /><SummaryRow label="Immatriculation" value={draft.vehicleRegistration || "-"} /><SummaryRow label="Categorie" value={draft.convoyCategory} /><SummaryRow label="Chauffeur" value={draft.driverName} /></div>
+          <section className="question-card review-card"><span className="question-kicker">Résumé</span><h2 className="question-title">{step.title}</h2><p className="question-description">{step.description}</p><div className="review-grid">
+            <div className="review-block"><div className="review-block-head"><h3>Pilotes</h3><button className="ghost-inline" type="button" onClick={() => goToStep("pilots")}>Modifier</button></div><SummaryRow label="Sélection" value={draft.pilotNames.join(", ")} /><SummaryRow label="Nombre" value={pilotCountLabel(draft.pilotNames.length)} /><SummaryRow label="Numéro de bon" value={draft.bonNumber} /></div>
+            <div className="review-block"><div className="review-block-head"><h3>Convoi</h3><button className="ghost-inline" type="button" onClick={() => goToStep("convoy")}>Modifier</button></div><SummaryRow label="Transporteur" value={draft.transporter} /><SummaryRow label="Immatriculation" value={draft.vehicleRegistration || "-"} /><SummaryRow label="Catégorie" value={draft.convoyCategory} /><SummaryRow label="Chauffeur" value={draft.driverName} /></div>
             <div className="review-block"><div className="review-block-head"><h3>Dates</h3><button className="ghost-inline" type="button" onClick={() => goToStep("timing")}>Modifier</button></div><SummaryRow label="Prise en charge" value={dateTimeSummary(draft.pickupDate, draft.pickupTime)} /><SummaryRow label="Fin de convoi" value={dateTimeSummary(draft.endDate, draft.endTime)} /></div>
-            <div className="review-block"><div className="review-block-head"><h3>Villes</h3><button className="ghost-inline" type="button" onClick={() => goToStep("timing")}>Modifier</button></div><SummaryRow label="Depart" value={draft.departureCity} /><SummaryRow label="Arrivee" value={draft.arrivalCity} /></div>
-            <div className="review-block review-block-wide"><div className="review-block-head"><h3>Trajets</h3><button className="ghost-inline" type="button" onClick={() => goToStep("itinerary")}>Modifier</button></div><div className="review-route-list">{filterFilledItineraryRows(draft.itinerary).map((row, index) => <div className="review-route" key={`review-route-${index}`}><div className="review-route-main"><strong>{row.date}</strong> {row.departureCity} ({row.departureTime}) {"->"} {row.arrivalCity} ({row.arrivalTime})</div><div className="review-route-km">{row.km} km</div></div>)}</div><div className="review-total">Total calcule : {previewData.totalKm || 0} km</div></div>
-            <div className="review-block review-block-wide"><div className="review-block-head"><h3>Observations</h3><button className="ghost-inline" type="button" onClick={() => goToStep("observations")}>Modifier</button></div><p className="review-notes">{draft.observations || "Aucune observation renseignee."}</p></div>
+            <div className="review-block"><div className="review-block-head"><h3>Villes</h3><button className="ghost-inline" type="button" onClick={() => goToStep("timing")}>Modifier</button></div><SummaryRow label="Départ" value={draft.departureCity} /><SummaryRow label="Arrivée" value={draft.arrivalCity} /></div>
+            <div className="review-block review-block-wide"><div className="review-block-head"><h3>Trajets</h3><button className="ghost-inline" type="button" onClick={() => goToStep("itinerary")}>Modifier</button></div><div className="review-route-list">{filterFilledItineraryRows(draft.itinerary).map((row, index) => <div className="review-route" key={`review-route-${index}`}><div className="review-route-main"><strong>{row.date}</strong> {row.departureCity} ({row.departureTime}) {"->"} {row.arrivalCity} ({row.arrivalTime})</div><div className="review-route-km">{row.km} km</div></div>)}</div><div className="review-total">Total calculé : {previewData.totalKm || 0} km</div></div>
+            <div className="review-block review-block-wide"><div className="review-block-head"><h3>Observations</h3><button className="ghost-inline" type="button" onClick={() => goToStep("observations")}>Modifier</button></div><p className="review-notes">{draft.observations || "Aucune observation renseignée."}</p></div>
+            <div className="review-block review-block-wide"><h3>Envoi</h3><p className="review-notes">Le PDF ne sera envoyé qu'après validation explicite du résumé.</p><div className="review-total">{isReviewConfirmed ? "Résumé validé" : "Résumé à valider"}</div></div>
           </div></section>
         );
       default:
@@ -356,10 +393,10 @@ export function BonPilotageAppV2() {
   }
 
   return (
-    <main className="app-shell"><section className="app-frame"><header className="app-topbar"><div className="app-brand"><span className="app-kicker">Bon de pilotage</span><h1>Saisie rapide</h1></div><div className="app-meta"><span className="app-step-label">Etape {currentStep + 1} / {flowSteps.length}</span><div className="progress-track" aria-hidden="true"><span className="progress-fill" style={{ width: `${progress}%` }} /></div></div></header>
+    <main className="app-shell"><section className="app-frame"><header className="app-topbar"><div className="app-brand"><span className="app-kicker">Bon de pilotage</span></div><div className="app-meta"><span className="app-step-label">Étape {currentStep + 1} / {flowSteps.length}</span><div className="progress-track" aria-hidden="true"><span className="progress-fill" style={{ width: `${progress}%` }} /></div></div></header>
       {status.type === "success" ? <div className="status status-success">{status.message}</div> : null}
       {status.type === "error" ? <div className="status status-error">{status.message}</div> : null}
-      <form className="question-flow" onSubmit={handleSubmit}><div className="question-stage" key={step.id}>{renderStep()}</div><div className="visually-hidden" aria-hidden="true"><label htmlFor="website">Ne pas remplir</label><input id="website" tabIndex={-1} autoComplete="off" value={draft.website} onChange={(event) => updateTextField("website", event.target.value)} /></div><footer className="app-footer"><button className="ghost-button" type="button" onClick={() => { setDraft(createInitialDraft()); setCurrentStep(0); setStatus({ type: "idle" }); }} disabled={isSubmitting}>Reinitialiser</button><div className="footer-actions"><button className="ghost-button" type="button" onClick={() => { clearStatus(); setCurrentStep((index) => Math.max(index - 1, 0)); }} disabled={isFirstStep || isSubmitting}>Precedent</button>{isLastStep ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Envoi en cours..." : "Envoyer"}</button> : <button className="button" type="button" onClick={nextStep} disabled={isSubmitting}>Continuer</button>}</div></footer></form>
+      <form className="question-flow" onSubmit={handleSubmit}><div className="question-stage" key={step.id}>{renderStep()}</div><div className="visually-hidden" aria-hidden="true"><label htmlFor="website">Ne pas remplir</label><input id="website" tabIndex={-1} autoComplete="off" value={draft.website} onChange={(event) => updateTextField("website", event.target.value)} /></div><footer className="app-footer"><button className="ghost-button" type="button" onClick={() => { setDraft(createInitialDraft()); setCurrentStep(0); setIsReviewConfirmed(false); setStatus({ type: "idle" }); }} disabled={isSubmitting}>Réinitialiser</button><div className="footer-actions"><button className="ghost-button" type="button" onClick={() => { clearStatus(); setIsReviewConfirmed(false); setCurrentStep((index) => Math.max(index - 1, 0)); }} disabled={isFirstStep || isSubmitting}>Précédent</button>{isLastStep ? (isReviewConfirmed ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Envoi en cours..." : "Envoyer le PDF"}</button> : <button className="button" type="button" onClick={confirmReview} disabled={isSubmitting}>Valider le résumé</button>) : <button className="button" type="button" onClick={nextStep} disabled={isSubmitting}>Continuer</button>}</div></footer></form>
     </section></main>
   );
 }
