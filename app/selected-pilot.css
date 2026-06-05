@@ -1,0 +1,39 @@
+.pilot-card {
+  position: relative;
+}
+
+.pilot-card.pilot-card-active {
+  border: 3px solid var(--red);
+  border-left: 14px solid var(--red);
+  background:
+    linear-gradient(135deg, rgba(255, 204, 0, 0.42) 0%, #ffffff 46%, rgba(215, 25, 32, 0.16) 100%);
+  box-shadow:
+    0 0 0 4px rgba(255, 204, 0, 0.52),
+    0 12px 28px rgba(215, 25, 32, 0.28);
+  transform: translateY(-2px);
+}
+
+.pilot-card.pilot-card-active::after {
+  content: "✓";
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 3px 10px rgba(215, 25, 32, 0.28);
+}
+
+.pilot-card.pilot-card-active .pilot-name {
+  color: var(--red-deep);
+}
+
+.pilot-card.pilot-card-active .pilot-meta {
+  color: var(--red);
+  font-weight: 900;
+}
