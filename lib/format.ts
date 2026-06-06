@@ -59,20 +59,8 @@ export function createInitialDraft(): SubmissionDraft {
   };
 }
 
-export function resetDraftAfterSuccess(current: SubmissionDraft): SubmissionDraft {
-  const fresh = createInitialDraft();
-
-  return {
-    ...fresh,
-    pilotNames: current.pilotNames,
-    pilotName: current.pilotNames.join(", "),
-    transporter: current.transporter,
-    vehicleRegistration: current.vehicleRegistration,
-    convoyCategory: current.convoyCategory,
-    driverName: current.driverName,
-    departureCity: current.departureCity,
-    arrivalCity: current.arrivalCity,
-  };
+export function resetDraftAfterSuccess(): SubmissionDraft {
+  return createInitialDraft();
 }
 
 export function filterFilledItineraryRows(rows: ItineraryDraftRow[]) {
