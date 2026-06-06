@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./selected-pilot.css";
+import "./city-suggest.css";
 
 export const metadata: Metadata = {
   title: "Bon de pilotage",
