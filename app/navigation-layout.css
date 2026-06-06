@@ -1,0 +1,54 @@
+.app-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.top-reset-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--grey);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  box-shadow: 0 1px 2px rgba(32, 33, 36, 0.08);
+}
+
+.top-reset-button:hover {
+  color: var(--red);
+  border-color: rgba(215, 25, 32, 0.36);
+  background: rgba(215, 25, 32, 0.06);
+}
+
+.top-reset-button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
+.footer-actions.footer-actions-vertical {
+  display: grid;
+  width: 100%;
+  gap: 10px;
+}
+
+.footer-actions.footer-actions-vertical .button,
+.footer-actions.footer-actions-vertical .ghost-button {
+  width: 100%;
+}
+
+.footer-actions.footer-actions-vertical .ghost-button {
+  min-height: 42px;
+}
+
+@media (max-width: 720px) {
+  .app-brand-row {
+    align-items: center;
+  }
+}
