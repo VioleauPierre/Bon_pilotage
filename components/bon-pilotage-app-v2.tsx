@@ -1,5 +1,6 @@
 "use client";
 
+import { CitySuggestField } from "@/components/city-suggest-field";
 import options from "@/data/bon-pilotage-options.json";
 import {
   CONVOY_CATEGORIES,
@@ -350,8 +351,8 @@ export function BonPilotageAppV2() {
               {renderField({ field: "pickupTime", label: "Heure prise en charge", type: "time" })}
               {renderField({ field: "endDate", label: "Date fin de convoi", type: "date" })}
               {renderField({ field: "endTime", label: "Heure fin de convoi", type: "time" })}
-              {renderField({ field: "departureCity", label: "Ville départ", values: cities, placeholder: "Rechercher ou saisir" })}
-              {renderField({ field: "arrivalCity", label: "Ville arrivée", values: cities, placeholder: "Rechercher ou saisir" })}
+              <CitySuggestField id="departureCity" label="Ville départ" value={draft.departureCity} localSuggestions={cities} onChange={(value) => updateTextField("departureCity", value)} />
+              <CitySuggestField id="arrivalCity" label="Ville arrivée" value={draft.arrivalCity} localSuggestions={cities} onChange={(value) => updateTextField("arrivalCity", value)} />
             </div>
           </section>
         );
@@ -362,13 +363,12 @@ export function BonPilotageAppV2() {
             <h2 className="question-title">{step.title}</h2>
             <p className="question-description">{step.description}</p>
             <div className="route-toolbar"><div className="route-total">{previewData.totalKm || 0} km cumulés</div><div className="route-toolbar-actions"><button className="inline-action" type="button" onClick={reuseMainRoute}>Reprendre le trajet</button><button className="inline-action" type="button" onClick={addItineraryRow} disabled={draft.itinerary.length >= MAX_ITINERARY_ROWS}>Ajouter une ligne</button></div></div>
-            <datalist id="city-options">{cities.map((city) => <option key={city} value={city} />)}</datalist>
             <div className="route-list">{draft.itinerary.map((row, index) => <div className="route-card" key={`route-${index}`}><div className="route-card-head"><span className="route-index">Ligne {index + 1}</span><button className="ghost-inline" type="button" onClick={() => removeItineraryRow(index)}>Supprimer</button></div><div className="route-grid">
               <div className="field"><label htmlFor={`itinerary-date-${index}`}>Date</label><input id={`itinerary-date-${index}`} type="date" value={row.date} onChange={(event) => updateItinerary(index, "date", event.target.value)} /></div>
               <div className="field"><label htmlFor={`itinerary-km-${index}`}>km</label><input id={`itinerary-km-${index}`} type="number" min="0" step="1" value={row.km} onChange={(event) => updateItinerary(index, "km", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-departure-${index}`}>Départ</label><input id={`itinerary-departure-${index}`} list="city-options" value={row.departureCity} onChange={(event) => updateItinerary(index, "departureCity", event.target.value)} /></div>
+              <CitySuggestField id={`itinerary-departure-${index}`} label="Départ" value={row.departureCity} localSuggestions={cities} onChange={(value) => updateItinerary(index, "departureCity", value)} />
               <div className="field"><label htmlFor={`itinerary-departure-time-${index}`}>Heure départ</label><input id={`itinerary-departure-time-${index}`} type="time" value={row.departureTime} onChange={(event) => updateItinerary(index, "departureTime", event.target.value)} /></div>
-              <div className="field"><label htmlFor={`itinerary-arrival-${index}`}>Arrivée</label><input id={`itinerary-arrival-${index}`} list="city-options" value={row.arrivalCity} onChange={(event) => updateItinerary(index, "arrivalCity", event.target.value)} /></div>
+              <CitySuggestField id={`itinerary-arrival-${index}`} label="Arrivée" value={row.arrivalCity} localSuggestions={cities} onChange={(value) => updateItinerary(index, "arrivalCity", value)} />
               <div className="field"><label htmlFor={`itinerary-arrival-time-${index}`}>Heure arrivée</label><input id={`itinerary-arrival-time-${index}`} type="time" value={row.arrivalTime} onChange={(event) => updateItinerary(index, "arrivalTime", event.target.value)} /></div>
             </div></div>)}</div>
           </section>
