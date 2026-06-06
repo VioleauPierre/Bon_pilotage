@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <path d="M320 78C380 48 450 38 512 34C455 48 397 78 380 123C374 140 376 158 388 178H326C305 138 302 100 320 78Z" fill="#000000"/>
+  <path d="M346 190H458L512 246V322H382L346 190Z" fill="#ed0016"/>
+  <path d="M28 304C132 302 236 286 340 268C248 296 149 318 42 326Z" fill="#ed0016"/>
+  <text x="36" y="220" font-family="Arial Black, Impact, sans-serif" font-size="132" font-style="italic" font-weight="900" fill="#000000" transform="skewX(-8)">Elite</text>
+  <text x="314" y="256" font-family="Arial Black, Impact, sans-serif" font-size="38" font-style="italic" font-weight="900" fill="#000000">GUIDAGE</text>
+  <path d="M22 248H274C256 256 244 267 236 280C174 256 92 250 22 248Z" fill="#ed0016"/>
+  <path d="M18 246H416" stroke="#ed0016" stroke-width="5" stroke-linecap="round"/>
+</svg>
