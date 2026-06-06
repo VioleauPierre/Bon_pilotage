@@ -108,6 +108,13 @@ export function BonPilotageAppV2() {
     setStatus((current) => (current.type === "idle" ? current : { type: "idle" }));
   }
 
+  function resetForm() {
+    setDraft(createInitialDraft());
+    setCurrentStep(0);
+    setIsReviewConfirmed(false);
+    setStatus({ type: "idle" });
+  }
+
   function invalidateReview() {
     setIsReviewConfirmed(false);
   }
@@ -252,7 +259,7 @@ export function BonPilotageAppV2() {
       const result = (await response.json()) as { ok?: boolean; message?: string; bonNumber?: string; memory?: SubmissionMemory };
       if (!response.ok || !result.ok) throw new Error(result.message || "La soumission a échoué.");
       if (result.memory) setMemory(result.memory);
-      setDraft((current) => resetDraftAfterSuccess(current));
+      setDraft(() => resetDraftAfterSuccess());
       setCurrentStep(0);
       setIsReviewConfirmed(false);
       setStatus({ type: "success", message: `Le bon ${result.bonNumber || draft.bonNumber} a été généré et envoyé par e-mail.` });
@@ -392,11 +399,38 @@ export function BonPilotageAppV2() {
     }
   }
 
+  const primaryFooterAction = isLastStep
+    ? isReviewConfirmed
+      ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Envoi en cours..." : "Envoyer le PDF"}</button>
+      : <button className="button" type="button" onClick={confirmReview} disabled={isSubmitting}>Valider le résumé</button>
+    : <button className="button" type="button" onClick={nextStep} disabled={isSubmitting}>Continuer</button>;
+
   return (
-    <main className="app-shell"><section className="app-frame"><header className="app-topbar"><div className="app-brand"><span className="app-kicker">Bon de pilotage</span></div><div className="app-meta"><span className="app-step-label">Étape {currentStep + 1} / {flowSteps.length}</span><div className="progress-track" aria-hidden="true"><span className="progress-fill" style={{ width: `${progress}%` }} /></div></div></header>
-      {status.type === "success" ? <div className="status status-success">{status.message}</div> : null}
-      {status.type === "error" ? <div className="status status-error">{status.message}</div> : null}
-      <form className="question-flow" onSubmit={handleSubmit}><div className="question-stage" key={step.id}>{renderStep()}</div><div className="visually-hidden" aria-hidden="true"><label htmlFor="website">Ne pas remplir</label><input id="website" tabIndex={-1} autoComplete="off" value={draft.website} onChange={(event) => updateTextField("website", event.target.value)} /></div><footer className="app-footer"><button className="ghost-button" type="button" onClick={() => { setDraft(createInitialDraft()); setCurrentStep(0); setIsReviewConfirmed(false); setStatus({ type: "idle" }); }} disabled={isSubmitting}>Réinitialiser</button><div className="footer-actions"><button className="ghost-button" type="button" onClick={() => { clearStatus(); setIsReviewConfirmed(false); setCurrentStep((index) => Math.max(index - 1, 0)); }} disabled={isFirstStep || isSubmitting}>Précédent</button>{isLastStep ? (isReviewConfirmed ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Envoi en cours..." : "Envoyer le PDF"}</button> : <button className="button" type="button" onClick={confirmReview} disabled={isSubmitting}>Valider le résumé</button>) : <button className="button" type="button" onClick={nextStep} disabled={isSubmitting}>Continuer</button>}</div></footer></form>
-    </section></main>
+    <main className="app-shell">
+      <section className="app-frame">
+        <header className="app-topbar">
+          <div className="app-brand-row">
+            <span className="app-kicker">Bon de pilotage</span>
+            <button className="top-reset-button" type="button" onClick={resetForm} disabled={isSubmitting}>Réinitialiser</button>
+          </div>
+          <div className="app-meta">
+            <span className="app-step-label">Étape {currentStep + 1} / {flowSteps.length}</span>
+            <div className="progress-track" aria-hidden="true"><span className="progress-fill" style={{ width: `${progress}%` }} /></div>
+          </div>
+        </header>
+        {status.type === "success" ? <div className="status status-success">{status.message}</div> : null}
+        {status.type === "error" ? <div className="status status-error">{status.message}</div> : null}
+        <form className="question-flow" onSubmit={handleSubmit}>
+          <div className="question-stage" key={step.id}>{renderStep()}</div>
+          <div className="visually-hidden" aria-hidden="true"><label htmlFor="website">Ne pas remplir</label><input id="website" tabIndex={-1} autoComplete="off" value={draft.website} onChange={(event) => updateTextField("website", event.target.value)} /></div>
+          <footer className="app-footer">
+            <div className="footer-actions footer-actions-vertical">
+              {primaryFooterAction}
+              <button className="ghost-button" type="button" onClick={() => { clearStatus(); setIsReviewConfirmed(false); setCurrentStep((index) => Math.max(index - 1, 0)); }} disabled={isFirstStep || isSubmitting}>Précédent</button>
+            </div>
+          </footer>
+        </form>
+      </section>
+    </main>
   );
 }
