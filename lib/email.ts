@@ -1,3 +1,4 @@
+import { COMPANY_INFO } from "@/lib/constants";
 import { formatDateLabel, formatTimeLabel } from "@/lib/format";
 import type { ParsedSubmission } from "@/lib/submission";
 import nodemailer from "nodemailer";
@@ -34,9 +35,10 @@ function buildEmailHtml(submission: ParsedSubmission) {
 
   return `
     <div style="font-family: Arial, Helvetica, sans-serif; color: #101827; line-height: 1.5;">
-      <h2 style="margin: 0 0 12px;">Nouveau bon de pilotage</h2>
+      <h2 style="margin: 0 0 12px;">${escapeHtml(COMPANY_INFO.name)} — Bon de pilotage</h2>
       <p style="margin: 0 0 18px;">
-        Le bon <strong>${escapeHtml(submission.bonNumber)}</strong> a été généré et est joint en PDF.
+        Vous trouverez en pièce jointe le bon de pilotage <strong>${escapeHtml(submission.bonNumber)}</strong>
+        établi par ${escapeHtml(COMPANY_INFO.name)} pour la prestation de guidage du convoi ci-dessous.
       </p>
       <table style="border-collapse: collapse; width: 100%; max-width: 680px;">
         <tbody>
@@ -53,8 +55,59 @@ function buildEmailHtml(submission: ParsedSubmission) {
           ? `<p style="margin-top: 18px;"><strong>Observations :</strong><br />${observations}</p>`
           : ""
       }
+      <p style="margin-top: 24px;">
+        ${escapeHtml(COMPANY_INFO.name)}<br />
+        ${escapeHtml(COMPANY_INFO.addressLine1)}<br />
+        ${escapeHtml(COMPANY_INFO.addressLine2)}<br />
+        ${escapeHtml(COMPANY_INFO.phone)} — ${escapeHtml(COMPANY_INFO.email)}
+      </p>
     </div>
   `;
+}
+
+function buildEmailText(submission: ParsedSubmission) {
+  return [
+    `${COMPANY_INFO.name} — Bon de pilotage`,
+    "",
+    `Vous trouverez en pièce jointe le bon de pilotage ${submission.bonNumber}`,
+    `établi par ${COMPANY_INFO.name} pour la prestation de guidage du convoi ci-dessous.`,
+    "",
+    `Pilote : ${submission.pilotName}`,
+    `Transporteur : ${submission.transporter}`,
+    `Chauffeur : ${submission.driverName}`,
+    `Prise en charge : ${formatDateLabel(submission.pickupDate)} à ${formatTimeLabel(submission.pickupTime)}`,
+    `Trajet principal : ${submission.departureCity} -> ${submission.arrivalCity}`,
+    `Total km : ${submission.totalKm} km`,
+    ...(submission.observations ? ["", `Observations : ${submission.observations}`] : []),
+    "",
+    COMPANY_INFO.name,
+    COMPANY_INFO.addressLine1,
+    COMPANY_INFO.addressLine2,
+    `${COMPANY_INFO.phone} — ${COMPANY_INFO.email}`,
+  ].join("\n");
+}
+
+export function buildBonPilotageEmail(
+  { submission, pdfBuffer, fileName }: SendBonPilotageEmailInput,
+  sender: string,
+  recipient: string,
+): nodemailer.SendMailOptions {
+  return {
+    // Keep the authenticated Gmail address so Gmail can sign the From domain.
+    from: { name: `${COMPANY_INFO.name} — Bon Pilotage`, address: sender },
+    to: recipient,
+    subject: `${COMPANY_INFO.name} — Bon de pilotage ${submission.bonNumber}`,
+    text: buildEmailText(submission),
+    html: buildEmailHtml(submission),
+    attachments: [
+      {
+        filename: fileName,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+        contentDisposition: "attachment",
+      },
+    ],
+  };
 }
 
 export async function sendBonPilotageEmail({
@@ -67,24 +120,16 @@ export async function sendBonPilotageEmail({
   const to = getRequiredEnv("NOTIFICATION_EMAIL");
   const transporter = nodemailer.createTransport({
     service: "gmail",
+    tls: { minVersion: "TLSv1.2" },
     auth: {
       user,
       pass: appPassword,
     },
   });
 
-  const info = await transporter.sendMail({
-    from: `"Bon Pilotage" <${user}>`,
-    to,
-    subject: `Bon de pilotage ${submission.bonNumber}`,
-    html: buildEmailHtml(submission),
-    attachments: [
-      {
-        filename: fileName,
-        content: pdfBuffer,
-      },
-    ],
-  });
+  const info = await transporter.sendMail(
+    buildBonPilotageEmail({ submission, pdfBuffer, fileName }, user, to),
+  );
 
   return { id: info.messageId };
 }
