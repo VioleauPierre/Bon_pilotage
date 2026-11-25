@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./selected-pilot.css";
 import "./city-suggest.css";
@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   description:
     "Formulaire de saisie bon de pilotage",
   manifest: "/manifest.webmanifest",
-  themeColor: "#ffcc00",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
@@ -21,6 +20,8 @@ export const metadata: Metadata = {
     ],
   },
 };
+
+export const viewport: Viewport = { themeColor: "#ffcc00" };
 
 export default function RootLayout({
   children,

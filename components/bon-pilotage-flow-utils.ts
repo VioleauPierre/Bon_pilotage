@@ -1,4 +1,3 @@
-import { MAX_ITINERARY_ROWS } from "@/lib/constants";
 import {
   createEmptyItineraryRow,
   filterFilledItineraryRows,

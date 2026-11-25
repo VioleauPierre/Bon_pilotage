@@ -25,6 +25,13 @@ function formatPilots(data: BonPilotageDisplayData) {
   return data.pilotNames.length > 0 ? data.pilotNames.join(", ") : data.pilotName;
 }
 
+function formatDocumentDateTime(date: string, time: string) {
+  const day = formatDateLabel(date);
+  const hour = formatTimeLabel(time);
+  if (!day) return hour;
+  return hour ? `Le ${day} à ${hour}` : `Le ${day}`;
+}
+
 function infoCell(label: string, value: string) {
   return `<div style="border:1px solid #111827;padding:8px 10px;min-height:48px;">
     <span style="display:block;margin-bottom:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">${escapeHtml(label)}</span>
@@ -100,11 +107,11 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;">
           ${infoCell("Nom du chauffeur", data.driverName)}
-          ${infoCell("Total km", `${String(totalKm || 0)} km`)}
+          ${infoCell("Total km", totalKm === "" ? "" : `${String(totalKm)} km`)}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;">
-          ${infoCell("Date et heure de prise en charge", `Le ${formatDateLabel(data.pickupDate)} à ${formatTimeLabel(data.pickupTime)}`)}
-          ${infoCell("Date et heure de fin de convoi", `Le ${formatDateLabel(data.endDate)} à ${formatTimeLabel(data.endTime)}`)}
+          ${infoCell("Date et heure de prise en charge", formatDocumentDateTime(data.pickupDate, data.pickupTime))}
+          ${infoCell("Date et heure de fin de convoi", formatDocumentDateTime(data.endDate, data.endTime))}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;">
           ${infoCell("Ville de départ", data.departureCity)}
@@ -132,8 +139,15 @@ export function renderBonPilotageHtml(data: BonPilotageDisplayData) {
         <p style="margin:0;min-height:70px;white-space:pre-wrap;font-size:13px;line-height:1.5;">${observations}</p>
       </div>
 
+      ${data.driverSignature || data.decreeNumber ? `
+        <div style="margin-top:8px;font-size:11px;">
+          ${data.decreeNumber ? `<div>N° d’arrêté · ${escapeHtml(data.decreeNumber)}</div>` : ""}
+          ${data.driverSignature ? `<div>Signature enregistrée · ${escapeHtml(data.driverSignature)}</div>` : ""}
+        </div>` : ""}
+      ${data.archiveNote ? `<p style="margin:8px 0 0;font-size:10px;">${escapeHtml(data.archiveNote)}</p>` : ""}
       <div style="margin-top:10px;text-align:right;font-size:10px;color:#475467;">
-        Document généré le ${escapeHtml(data.generatedAt || new Date().toLocaleString("fr-FR"))}
+        ${data.generatedAt ? `Document généré le ${escapeHtml(data.generatedAt)}`
+          : data.registeredAt ? `Bon enregistré le ${escapeHtml(data.registeredAt)}` : ""}
       </div>
     </div>
   </body>

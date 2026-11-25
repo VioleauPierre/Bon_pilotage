@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
 const DEFAULT_VERCEL_CHROMIUM_PACK_URL =
-  "https://github.com/Sparticuz/chromium/releases/download/v143.0.0/chromium-v143.0.0-pack.x64.tar";
+  "https://github.com/Sparticuz/chromium/releases/download/v158.0.0/chromium-v158.0.0-pack.x64.tar";
 
 const COMMON_CHROME_PATHS = [
   process.env.CHROME_EXECUTABLE_PATH,
@@ -56,11 +56,12 @@ export async function renderPdfFromHtml(html: string) {
       deviceScaleFactor: 2,
     },
     headless: true,
+    timeout: 15_000,
   });
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, { waitUntil: "load", timeout: 12_000 });
     await page.emulateMediaType("screen");
 
     const pdf = await page.pdf({

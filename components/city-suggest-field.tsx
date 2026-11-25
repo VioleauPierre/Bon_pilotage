@@ -61,28 +61,28 @@ export function CitySuggestField({
   localSuggestions,
   onChange,
 }: CitySuggestFieldProps) {
-  const [apiSuggestions, setApiSuggestions] = useState<CitySuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const query = value.trim();
+  const [apiResult, setApiResult] = useState<{
+    query: string;
+    suggestions: CitySuggestion[];
+    loading: boolean;
+  } | null>(null);
+  const activeResult = apiResult?.query === query ? apiResult : null;
+  const isLoading = activeResult?.loading ?? false;
 
   const localMatches = useMemo(
     () => toLocalSuggestions(localSuggestions, value),
     [localSuggestions, value],
   );
-  const suggestions = mergeSuggestions(apiSuggestions, localMatches);
+  const suggestions = mergeSuggestions(activeResult?.suggestions ?? [], localMatches);
 
   useEffect(() => {
-    const query = value.trim();
-
-    if (query.length < 2) {
-      setApiSuggestions([]);
-      setIsLoading(false);
-      return;
-    }
+    if (query.length < 2) return;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       try {
-        setIsLoading(true);
+        setApiResult({ query, suggestions: [], loading: true });
         const response = await fetch(`/api/cities?q=${encodeURIComponent(query)}`, {
           method: "GET",
           signal: controller.signal,
@@ -92,17 +92,12 @@ export function CitySuggestField({
           suggestions?: CitySuggestion[];
         };
 
-        if (response.ok && result.ok && result.suggestions) {
-          setApiSuggestions(result.suggestions);
+        if (!controller.signal.aborted) {
+          const suggestions = response.ok && result.ok ? result.suggestions ?? [] : [];
+          setApiResult({ query, suggestions, loading: false });
         }
       } catch {
-        if (!controller.signal.aborted) {
-          setApiSuggestions([]);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
+        if (!controller.signal.aborted) setApiResult({ query, suggestions: [], loading: false });
       }
     }, 220);
 
@@ -110,7 +105,7 @@ export function CitySuggestField({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [value]);
+  }, [query]);
 
   return (
     <div className="field city-field">

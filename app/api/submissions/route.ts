@@ -1,33 +1,26 @@
+import { createHash } from "node:crypto";
+import { NextResponse } from "next/server";
+import { getMailConfiguration, getSendEmailSetting } from "@/lib/admin-settings";
+import { buildBonPilotagePdf, CURRENT_PDF_TEMPLATE, documentTimestamp } from "@/lib/bon-pilotage-pdf";
 import { sendBonPilotageEmail } from "@/lib/email";
-import { createEmptySubmissionMemory } from "@/lib/form-memory";
-import { formatDateLabel, sanitizeFilePart } from "@/lib/format";
-import { renderPdfFromHtml } from "@/lib/pdf";
-import { renderBonPilotageHtml } from "@/lib/render-bon-pilotage-html";
 import { parseSubmission, type ParsedSubmission } from "@/lib/submission";
 import { persistSubmissionMemoryFromDraft } from "@/lib/submission-memory-store";
 import { getBonPilotageTableName, getSupabaseAdminClient } from "@/lib/supabase";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-function friendlyServerError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : "Une erreur inattendue est survenue.";
+const failureMessage = "Impossible d’enregistrer le bon. Les données saisies sont conservées. Réessaie dans quelques instants.";
 
-  if (message.startsWith("Impossible d'envoyer le bon.")) {
-    return message;
-  }
-
-  return `Impossible d'envoyer le bon. ${message}`;
-}
-
-function buildInsertPayload(submission: ParsedSubmission, recipientEmail: string) {
+function buildInsertPayload(submission: ParsedSubmission, recipientEmail: string, status: string) {
+  const { website: _website, ...content } = submission;
+  void _website;
+  const fingerprint = createHash("sha256").update(JSON.stringify(content)).digest("hex");
   return {
-    status: "queued",
+    submission_fingerprint: fingerprint,
+    generated_at: new Date().toISOString(),
+    pdf_template_version: CURRENT_PDF_TEMPLATE,
+    status,
     bon_number: submission.bonNumber,
     pilot_name: submission.pilotName,
     pilot_names: submission.pilotNames,
@@ -50,196 +43,84 @@ function buildInsertPayload(submission: ParsedSubmission, recipientEmail: string
   };
 }
 
-async function insertSubmission(
-  supabase: SupabaseClient,
-  table: string,
-  submission: ParsedSubmission,
-  recipientEmail: string,
-) {
-  const insertPayload = buildInsertPayload(submission, recipientEmail);
-
-  const insertResult = await supabase
-    .from(table)
-    .insert(insertPayload)
-    .select("id")
-    .single();
-
-  if (!insertResult.error) {
-    return insertResult.data?.id as string | null;
-  }
-
-  if (!/pilot_names|end_date|end_time/i.test(insertResult.error.message)) {
-    throw new Error(insertResult.error.message);
-  }
-
-  const legacyInsertPayload = {
-    status: insertPayload.status,
-    bon_number: insertPayload.bon_number,
-    pilot_name: insertPayload.pilot_name,
-    transporter: insertPayload.transporter,
-    vehicle_registration: insertPayload.vehicle_registration,
-    convoy_category: insertPayload.convoy_category,
-    decree_number: insertPayload.decree_number,
-    driver_name: insertPayload.driver_name,
-    driver_signature: insertPayload.driver_signature,
-    pickup_date: insertPayload.pickup_date,
-    pickup_time: insertPayload.pickup_time,
-    departure_city: insertPayload.departure_city,
-    arrival_city: insertPayload.arrival_city,
-    total_km: insertPayload.total_km,
-    observations: insertPayload.observations,
-    recipient_email: insertPayload.recipient_email,
-    itinerary: insertPayload.itinerary,
+function confirmation(bonNumber: string, emailStatus: string, memory?: Awaited<ReturnType<typeof persistSubmissionMemoryFromDraft>>) {
+  const messages: Record<string, string> = {
+    sent: " Gmail a accepté l’e-mail.",
+    queued: " L’état de l’envoi par e-mail est en attente.",
+    email_failed: " L’envoi par e-mail a échoué. Le bon reste accessible à l’administration.",
   };
-
-  const legacyResult = await supabase
-    .from(table)
-    .insert(legacyInsertPayload)
-    .select("id")
-    .single();
-
-  if (legacyResult.error) {
-    throw new Error(legacyResult.error.message);
-  }
-
-  return legacyResult.data?.id as string | null;
-}
-
-async function markSubmissionSent(
-  supabase: SupabaseClient,
-  table: string,
-  insertedId: string | null,
-  fileName: string,
-  emailProviderId: string | null,
-) {
-  if (!insertedId) {
-    return;
-  }
-
-  const { error } = await supabase
-    .from(table)
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      pdf_file_name: fileName,
-      email_provider_id: emailProviderId,
-    })
-    .eq("id", insertedId);
-
-  if (error) {
-    console.error("Unable to mark submission as sent", error);
-  }
+  return NextResponse.json({
+    ok: true, bonNumber, memory, emailStatus,
+    message: `Le bon ${bonNumber} a été enregistré.${messages[emailStatus] ?? ""}`,
+  });
 }
 
 export async function POST(request: Request) {
-  let supabase: SupabaseClient | null = null;
-  let table = getBonPilotageTableName();
-  let insertedId: string | null = null;
+  const body: unknown = await request.json().catch(() => null);
+  const parsed = parseSubmission(body);
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, message: parsed.message }, { status: 400 });
+  }
+  const submission = parsed.data;
+  if (submission.website) {
+    return NextResponse.json({ ok: true, message: "Soumission reçue." });
+  }
 
   try {
-    const body = await request.json();
-    const parsed = parseSubmission(body);
+    const supabase = getSupabaseAdminClient();
+    const table = supabase.from(getBonPilotageTableName());
+    const sendEmail = await getSendEmailSetting(supabase).catch(() => {
+      console.error("Mail setting unavailable during submission");
+      return null;
+    });
+    const mail = sendEmail === true ? getMailConfiguration() : null;
+    const initialStatus = sendEmail === false ? "email_not_requested" : mail ? "queued" : "email_failed";
+    const payload = buildInsertPayload(submission, mail?.recipient ?? "", initialStatus);
 
-    if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, message: friendlyServerError(new Error(parsed.message)) },
-        { status: 400 },
-      );
+    // Seule la requête qui a inséré le bon peut déclencher l’envoi.
+    const { data, error } = await table
+      .upsert(payload, { onConflict: "submission_fingerprint", ignoreDuplicates: true })
+      .select("id").maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      const { data: existing, error: readError } = await table.select("bon_number,status")
+        .eq("submission_fingerprint", payload.submission_fingerprint).single();
+      if (readError || !existing) throw readError ?? new Error("Submission unavailable");
+      return confirmation(existing.bon_number, existing.status);
     }
 
-    if (parsed.data.website) {
-      return NextResponse.json({ ok: true, message: "Soumission reçue." });
-    }
-
-    const recipientEmail = process.env.NOTIFICATION_EMAIL;
-
-    if (!recipientEmail) {
-      throw new Error("Variable d'environnement manquante: NOTIFICATION_EMAIL");
-    }
-
-    try {
-      supabase = getSupabaseAdminClient();
-      insertedId = await insertSubmission(
-        supabase,
-        table,
-        parsed.data,
-        recipientEmail,
-      );
-    } catch (error) {
-      console.error("Unable to persist bon pilotage before email", error);
-    }
-
-    const documentData = {
-      ...parsed.data,
-      generatedAt: new Intl.DateTimeFormat("fr-FR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(new Date()),
-    };
-
-    const pdfBuffer = await renderPdfFromHtml(
-      renderBonPilotageHtml(documentData),
-    );
-    const fileName = `${sanitizeFilePart(parsed.data.bonNumber)}.pdf`;
-    const emailResult = await sendBonPilotageEmail({
-      submission: parsed.data,
-      pdfBuffer,
-      fileName,
+    const memory = persistSubmissionMemoryFromDraft(supabase, submission).catch(() => {
+      console.error("Unable to update pilot memory");
+      return undefined;
     });
 
-    if (supabase) {
-      await markSubmissionSent(
-        supabase,
-        table,
-        insertedId,
-        fileName,
-        emailResult?.id ?? null,
-      );
-    }
-
-    let memory = createEmptySubmissionMemory();
-    if (supabase) {
+    let emailStatus = initialStatus;
+    if (mail) {
+      let update: Record<string, string | null>;
       try {
-        memory = await persistSubmissionMemoryFromDraft(supabase, parsed.data);
-      } catch (error) {
-        console.error("Unable to persist bon pilotage memory", error);
-      }
-    }
-
-    return NextResponse.json({
-      ok: true,
-      bonNumber: parsed.data.bonNumber,
-      memory,
-      message: `Bon ${parsed.data.bonNumber} généré le ${formatDateLabel(
-        parsed.data.pickupDate,
-      )}.`,
-      warning: insertedId ? undefined : "Bon envoyé, mais non enregistré en base Supabase.",
-    });
-  } catch (error) {
-    if (insertedId) {
-      try {
-        const fallbackSupabase = supabase ?? getSupabaseAdminClient();
-        await fallbackSupabase
-          .from(table)
-          .update({
-            status: "email_failed",
-            email_error:
-              error instanceof Error
-                ? error.message
-                : "Erreur inconnue pendant l'envoi.",
-          })
-          .eq("id", insertedId);
+        const { buffer, fileName } = await buildBonPilotagePdf(
+          { ...submission, generatedAt: documentTimestamp(payload.generated_at) },
+          CURRENT_PDF_TEMPLATE,
+        );
+        const email = await sendBonPilotageEmail({ submission, pdfBuffer: buffer, fileName });
+        emailStatus = "sent";
+        update = { status: emailStatus, sent_at: new Date().toISOString(), pdf_file_name: fileName, email_provider_id: email.id };
       } catch {
-        // Ignore secondary persistence failures so the API can return the root error.
+        console.error("Automatic PDF generation or mail failed after submission was saved");
+        emailStatus = "email_failed";
+        update = { status: emailStatus, email_error: "Génération PDF ou envoi SMTP non confirmé." };
+      }
+      try {
+        const { error: updateError } = await table.update(update).eq("id", data.id);
+        if (updateError) throw updateError;
+      } catch {
+        console.error("Unable to update mail status for saved submission");
       }
     }
 
-    return NextResponse.json(
-      {
-        ok: false,
-        message: friendlyServerError(error),
-      },
-      { status: 500 },
-    );
+    return confirmation(submission.bonNumber, emailStatus, await memory);
+  } catch {
+    console.error("Unable to save or confirm bon pilotage");
+    return NextResponse.json({ ok: false, message: failureMessage }, { status: 503 });
   }
 }
