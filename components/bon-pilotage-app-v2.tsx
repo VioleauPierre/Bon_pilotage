@@ -26,7 +26,7 @@ import {
 } from "@/lib/format";
 import type { ItineraryDraftRow, SubmissionDraft, SubmissionMemory } from "@/lib/types";
 import Link from "next/link";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, type MouseEvent, useEffect, useRef, useState } from "react";
 
 type Status =
   | { type: "idle" }
@@ -210,7 +210,9 @@ export function BonPilotageAppV2() {
     setCurrentStep((index) => Math.min(index + 1, flowSteps.length - 1));
   }
 
-  function confirmReview() {
+  function confirmReview(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+
     for (const item of flowSteps) {
       if (item.id === "review") break;
       const error = validateFlowStep(item.id, draft);

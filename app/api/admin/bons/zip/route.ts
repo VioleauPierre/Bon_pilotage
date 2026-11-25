@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       const { buffer, fileName } = await buildBonPilotagePdf(makeDocument(row), row.pdf_template_version);
       size += buffer.length;
       if (size > MAX_BYTES) return privateError("Archive trop volumineuse. Réduisez la sélection.", 413);
-      const name = fileName in archive ? `${fileName.slice(0, -4)}-${row.id}.pdf` : fileName;
+      const name = fileName in archive ? `${fileName.slice(0, -4)} (${row.id}).pdf` : fileName;
       archive[name] = [buffer, { level: 0 }];
     }
 
