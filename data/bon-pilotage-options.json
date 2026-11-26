@@ -5,8 +5,8 @@
       "prenom": "Alexandrine Sourate"
     },
     {
-      "id": "benoit-thaudiere",
-      "prenom": "Benoît Thaudière"
+      "id": "bastien-chatelier",
+      "prenom": "Bastien Chatelier"
     },
     {
       "id": "bruno-letheuil",
@@ -26,7 +26,7 @@
     },
     {
       "id": "gildas-macalusogil",
-      "prenom": "Gildas Macalusogil"
+      "prenom": "Gildas Macaluso"
     },
     {
       "id": "greg-dieumegard",
@@ -34,7 +34,11 @@
     },
     {
       "id": "herve-pasquereau",
-      "prenom": "Hervé Pasquereau"
+      "prenom": "Hervé Paquereau"
+    },
+    {
+      "id": "jordan-camus",
+      "prenom": "Jordan Camus"
     },
     {
       "id": "laurent-calafat",
@@ -45,8 +49,16 @@
       "prenom": "Lilian Ligner"
     },
     {
+      "id": "pascal-raffin",
+      "prenom": "Pascal Raffin"
+    },
+    {
       "id": "raphael-pacteau",
       "prenom": "Raphaël Pacteau"
+    },
+    {
+      "id": "sebastien-cousseau",
+      "prenom": "Sébastien COUSSEAU"
     },
     {
       "id": "sebastien-viers",

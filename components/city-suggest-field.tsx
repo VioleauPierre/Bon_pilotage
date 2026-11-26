@@ -62,6 +62,7 @@ export function CitySuggestField({
   onChange,
 }: CitySuggestFieldProps) {
   const query = value.trim();
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [apiResult, setApiResult] = useState<{
     query: string;
     suggestions: CitySuggestion[];
@@ -77,7 +78,7 @@ export function CitySuggestField({
   const suggestions = mergeSuggestions(activeResult?.suggestions ?? [], localMatches);
 
   useEffect(() => {
-    if (query.length < 2) return;
+    if (!showSuggestions || query.length < 2) return;
 
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
@@ -105,7 +106,7 @@ export function CitySuggestField({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query]);
+  }, [query, showSuggestions]);
 
   return (
     <div className="field city-field">
@@ -115,9 +116,13 @@ export function CitySuggestField({
         value={value}
         placeholder="Ville ou code postal"
         autoComplete="off"
-        onChange={(event) => onChange(event.target.value)}
+        onFocus={() => setShowSuggestions(true)}
+        onChange={(event) => {
+          setShowSuggestions(true);
+          onChange(event.target.value);
+        }}
       />
-      {suggestions.length > 0 || isLoading ? (
+      {showSuggestions && (suggestions.length > 0 || isLoading) ? (
         <div className="city-suggestion-panel">
           {isLoading ? <span className="city-suggestion-info">Recherche...</span> : null}
           {suggestions.map((suggestion) => (
@@ -125,7 +130,10 @@ export function CitySuggestField({
               key={suggestion.label}
               className="city-suggestion-item"
               type="button"
-              onClick={() => onChange(suggestion.label)}
+              onClick={() => {
+                setShowSuggestions(false);
+                onChange(suggestion.label);
+              }}
             >
               <span>{suggestion.city}</span>
               {suggestion.postalCode ? <strong>{suggestion.postalCode}</strong> : null}
