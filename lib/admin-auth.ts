@@ -7,21 +7,35 @@ import { createAdminAuthClient } from "@/lib/admin-auth-client";
 import { getSupabaseAdminClient } from "@/lib/supabase";
 import { z } from "zod";
 
-export async function adminAuthClient() {
+const adminUserId = z.string().trim().toLowerCase().pipe(z.uuid());
+
+export function getSecondAdminUserId() {
+  const primary = adminUserId.safeParse(process.env.ADMIN_SUPABASE_USER_ID).data;
+  const second = adminUserId.safeParse(process.env.ADMIN_SUPABASE_SECOND_USER_ID).data;
+  return second !== primary ? second : undefined;
+}
+
+export function isAllowedAdminUserId(id: unknown): id is string {
+  if (typeof id !== "string") return false;
+  const primary = adminUserId.safeParse(process.env.ADMIN_SUPABASE_USER_ID).data;
+  return id === primary || id === getSecondAdminUserId();
+}
+
+export async function adminAuthClient(purpose: "admin" | "invitation" = "admin") {
   const store = await cookies();
   return createAdminAuthClient({
     getAll: () => store.getAll(),
     setAll: (values) => {
       for (const { name, value, options } of values) {
-        store.set(name, value, options);
+        store.set(name, value, purpose === "invitation" && options.maxAge !== 0
+          ? { ...options, maxAge: 600 }
+          : options);
       }
     },
-  });
+  }, purpose);
 }
 
 export const getAdminSession = cache(async () => {
-  const allowedId = process.env.ADMIN_SUPABASE_USER_ID?.trim().toLowerCase();
-  if (!allowedId || !z.uuid().safeParse(allowedId).success) return null;
   const client = await adminAuthClient();
   if (!client) return null;
 
@@ -29,10 +43,10 @@ export const getAdminSession = cache(async () => {
     const { data, error } = await client.auth.getClaims();
     const claims = data?.claims;
     const sessionId = z.uuid().safeParse(claims?.session_id);
-    if (error || claims?.sub !== allowedId || !sessionId.success) return null;
+    if (error || !isAllowedAdminUserId(claims?.sub) || !sessionId.success) return null;
 
     const { data: active, error: sessionError } = await getSupabaseAdminClient()
-      .rpc("bp_admin_session_active", { p_user: allowedId, p_session: sessionId.data });
+      .rpc("bp_admin_session_active", { p_user: claims.sub, p_session: sessionId.data });
 
     if (sessionError) throw sessionError;
     return active === true ? { client } : null;

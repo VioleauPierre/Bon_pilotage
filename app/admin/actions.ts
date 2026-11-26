@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { adminAuthClient, allowAdminLogin, requireAdmin } from "@/lib/admin-auth";
+import { adminAuthClient, allowAdminLogin, isAllowedAdminUserId, requireAdmin } from "@/lib/admin-auth";
 import { getBonPilotageTableName, getSupabaseAdminClient } from "@/lib/supabase";
 import { filterParams, getAdminHref, parseAdminFilters } from "@/lib/admin-filters";
 import { getMailConfiguration } from "@/lib/admin-settings";
@@ -20,16 +20,15 @@ export async function signIn(_previous: string, form: FormData): Promise<string>
   });
 
   if (!credentials.success) return "Identifiants invalides.";
-  const allowedId = process.env.ADMIN_SUPABASE_USER_ID?.trim().toLowerCase();
   const client = await adminAuthClient();
-  if (!client || !allowedId) return "Connexion indisponible.";
+  if (!client) return "Connexion indisponible.";
 
   try {
     if (!(await allowAdminLogin())) return "Trop de tentatives. Réessayez dans quelques minutes.";
     const { data, error } = await client.auth.signInWithPassword(credentials.data);
     if (error?.status === 429) return "Trop de tentatives. Réessayez dans quelques minutes.";
     if (error || !data.user) return "Identifiants invalides.";
-    if (data.user.id !== allowedId) {
+    if (!isAllowedAdminUserId(data.user.id)) {
       await client.auth.signOut({ scope: "local" });
       return "Identifiants invalides.";
     }

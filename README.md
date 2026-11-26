@@ -1,6 +1,6 @@
 # Bon Pilotage · ELITE GUIDAGE
 
-Le formulaire public enregistre les bons et mémorise les suggestions utilisées par les pilotes. L’espace `/admin` permet au destinataire autorisé de retrouver les bons enregistrés, de suivre leur consultation et de récupérer les documents.
+Le formulaire public enregistre les bons et mémorise les suggestions utilisées par les pilotes. L’espace `/admin` permet aux administrateurs autorisés de retrouver les bons enregistrés, de suivre leur consultation et de récupérer les documents.
 
 ## Démarrage local
 
@@ -19,7 +19,7 @@ Sur la base existante, ouvrir **SQL Editor** et exécuter les fichiers suivants 
 3. [`supabase/migrations/202611260001_archive_test_submissions.sql`](supabase/migrations/202611260001_archive_test_submissions.sql). La migration archive les bons existants dont la date de prestation est antérieure au 7 juin 2026. Les bons archivés sont exclus de l’historique, des indicateurs et des exports.
 4. Relancer le contrôle préalable et vérifier que RLS est actif pour les tables concernées. Tester le parcours dans un environnement isolé avec des données fictives. Pour une base vide, exécuter [`supabase/schema.sql`](supabase/schema.sql) avant le contrôle préalable et les migrations.
 
-Dans Supabase, ouvrir **Authentication → Users → Add user**, créer le destinataire avec son adresse e-mail et un mot de passe unique, puis confirmer son adresse lors de la création. Copier l’UUID de cet utilisateur. Dans **Authentication → Settings**, désactiver les nouvelles inscriptions, conserver le fournisseur **Email** et autoriser les sessions simultanées. Dans **URL Configuration**, renseigner l’URL de l’application comme **Site URL**. L’espace d’administration est prévu pour un seul UUID. [Configuration Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration).
+Dans Supabase, ouvrir **Authentication → Users → Add user**, créer l’administrateur principal avec son adresse e-mail et un mot de passe unique, puis confirmer son adresse lors de la création. Copier l’UUID de cet utilisateur. Dans **Authentication → Settings**, désactiver les nouvelles inscriptions, conserver le fournisseur **Email** et autoriser les sessions simultanées. Dans **URL Configuration**, renseigner l’URL de l’application comme **Site URL**. [Configuration Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration).
 
 Sur le projet Vercel existant, renseigner les variables suivantes dans **Settings → Environment Variables**. Utiliser un projet Supabase de test pour les déploiements de prévisualisation.
 
@@ -28,11 +28,18 @@ Sur le projet Vercel existant, renseigner les variables suivantes dans **Setting
 | `SUPABASE_URL` | URL du projet Supabase. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé privée de rôle de service. Conserver la clé côté serveur. |
 | `SUPABASE_PUBLISHABLE_KEY` | Clé publiable Supabase, ou clé historique `anon`, pour la connexion. |
-| `ADMIN_SUPABASE_USER_ID` | UUID du destinataire autorisé dans Supabase Auth. |
+| `ADMIN_SUPABASE_USER_ID` | UUID de l’administrateur principal dans Supabase Auth. |
+| `ADMIN_SUPABASE_SECOND_USER_ID` | Facultatif. UUID distinct du second administrateur dans Supabase Auth. |
 | `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `NOTIFICATION_EMAIL` | Requises quand l’envoi automatique est activé. |
 | `CHROMIUM_REMOTE_EXEC_PATH` | Optionnel. S’il existe déjà dans Vercel, utiliser une archive x64 compatible avec la version de Chromium installée dans le dépôt. |
 
 Configurer le projet pour Node.js 22 ou 24. Si `BON_PILOTAGE_TABLE` est déjà renseignée, vérifier qu’elle désigne `bon_pilotage_submissions`. La migration doit précéder le passage à cette version. Le paramètre initial conserve l’envoi automatique. Depuis **Administration → Paramètres**, désactiver l’envoi si nécessaire. Ce mode fonctionne sans variables Gmail et sans lancer Chromium lors d’une soumission.
+
+### Invitation manuelle du second administrateur
+
+1. Depuis un environnement serveur de confiance, utiliser `supabase.auth.admin.generateLink({ type: "invite", email })`. Cette opération crée l’invitation sans envoyer d’e-mail. Renseigner `data.user.id` dans `ADMIN_SUPABASE_SECOND_USER_ID` sur Vercel et déployer la configuration.
+2. Construire le lien privé sous la forme `https://<domaine>/admin/invitation#type=invite&token_hash=<data.properties.hashed_token>` et l’envoyer à l’adresse invitée. Le lien est à usage unique et expire selon le réglage **Email OTP Expiration** de Supabase. Le destinataire choisit son mot de passe puis se connecte sur `/admin`.
+3. Si le lien a expiré, générer un nouveau lien avec `generateLink`. Pour un compte déjà confirmé, utiliser `type: "recovery"` dans l’appel et dans le fragment du lien. Vérifier que l’UUID correspond toujours à `ADMIN_SUPABASE_SECOND_USER_ID` avant de transmettre le nouveau lien. [Génération de liens Supabase](https://supabase.com/docs/reference/javascript/auth-admin-generatelink).
 
 En cas de perte d’un appareil, se connecter depuis un appareil sûr et utiliser **Paramètres → Déconnecter les autres appareils**. L’appareil utilisé conserve sa session. Si un mot de passe a pu être enregistré sur l’appareil perdu, le changer via Supabase Auth après avoir révoqué les sessions. Contrôler l’accès depuis un deuxième appareil. [Sessions Supabase](https://supabase.com/docs/guides/auth/sessions).
 

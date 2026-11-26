@@ -30,8 +30,8 @@ const notices: Record<string, string> = {
 export default async function AdminPage({ searchParams: raw }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  if (!(await getAdminSession())) return <LoginForm />;
   const params = searchParams(await raw);
+  if (!(await getAdminSession())) return <LoginForm passwordSet={params.get("notice") === "password-set"} />;
   const filters = parseAdminFilters(params);
   const encoded = filterParams(filters).toString();
   const exportParams = filterParams(filters, 1);
