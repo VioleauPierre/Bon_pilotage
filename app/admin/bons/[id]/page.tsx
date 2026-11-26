@@ -33,7 +33,6 @@ export default async function SubmissionPage({ params, searchParams }: {
     ["Arrivée", data.arrivalCity],
     ["Kilométrage", row.total_km == null ? "" : `${row.total_km} km`],
     ["Mail", mailStatusLabel(row.status)],
-    ["Facturation", row.invoiced ? "Facturé" : "Non facturé"],
   ];
 
   return (

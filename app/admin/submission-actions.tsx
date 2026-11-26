@@ -2,7 +2,7 @@ import { changeSubmission } from "./actions";
 
 export function SubmissionAction({ id, operation, filters, children }: {
   id: string;
-  operation: "open" | "unread" | "invoice" | "uninvoice";
+  operation: "open" | "unread";
   filters: string;
   children: React.ReactNode;
 }) {

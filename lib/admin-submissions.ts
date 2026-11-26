@@ -5,9 +5,9 @@ import { getBonPilotageTableName, getSupabaseAdminClient } from "@/lib/supabase"
 import type { BonPilotageDisplayData } from "@/lib/types";
 
 const summaryColumns =
-  "id,bon_number,created_at,pickup_date,pilot_name,pilot_names,transporter,driver_name,vehicle_registration,departure_city,arrival_city,total_km,viewed_at,invoiced,status";
+  "id,bon_number,created_at,pickup_date,pilot_name,pilot_names,transporter,driver_name,vehicle_registration,departure_city,arrival_city,total_km,viewed_at,status";
 const documentColumns =
-  "id,bon_number,created_at,pickup_date,pilot_name,pilot_names,transporter,driver_name,vehicle_registration,departure_city,arrival_city,total_km,viewed_at,invoiced,status,pickup_time,end_date,end_time,convoy_category,decree_number,driver_signature,observations,itinerary,generated_at,pdf_template_version";
+  "id,bon_number,created_at,pickup_date,pilot_name,pilot_names,transporter,driver_name,vehicle_registration,departure_city,arrival_city,total_km,viewed_at,status,pickup_time,end_date,end_time,convoy_category,decree_number,driver_signature,observations,itinerary,generated_at,pdf_template_version";
 const csvColumns =
   "id,bon_number,pickup_date,pilot_name,pilot_names,transporter,driver_name,vehicle_registration,departure_city,arrival_city,total_km,invoiced,pickup_time,end_time";
 
@@ -28,7 +28,6 @@ export type SubmissionSummary = {
   arrival_city: string;
   total_km: number | null;
   viewed_at: string | null;
-  invoiced: boolean;
   status: string;
 };
 
@@ -47,7 +46,9 @@ export type StoredSubmission = SubmissionSummary & {
 
 export type CsvSubmission = Pick<SubmissionSummary, "bon_number" | "pickup_date" | "pilot_name" |
   "pilot_names" | "transporter" | "driver_name" | "vehicle_registration" | "departure_city" |
-  "arrival_city" | "total_km" | "invoiced"> & Pick<StoredSubmission, "pickup_time" | "end_time">;
+  "arrival_city" | "total_km"> & Pick<StoredSubmission, "pickup_time" | "end_time"> & {
+    invoiced: boolean;
+  };
 
 function table() {
   return getSupabaseAdminClient().from(getBonPilotageTableName());
@@ -72,7 +73,7 @@ function applyFilters<T extends Filterable<T>>(query: T, filters: AdminFilters):
 
 export async function listSubmissions(filters: AdminFilters) {
   const from = (filters.page - 1) * PAGE_SIZE;
-  const query = table().select(summaryColumns, { count: "exact" })
+  const query = table().select(summaryColumns, { count: "exact" }).is("archived_at", null)
     .order("created_at", { ascending: false }).order("id", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
   const { data, error, count } = await applyFilters(query, filters);
@@ -91,13 +92,13 @@ export async function getMetrics(filters: AdminFilters) {
 }
 
 export async function findSubmission(id: string) {
-  const { data, error } = await table().select(documentColumns).eq("id", id).maybeSingle();
+  const { data, error } = await table().select(documentColumns).eq("id", id).is("archived_at", null).maybeSingle();
   if (error) throw error;
   return data as StoredSubmission | null;
 }
 
 export async function listZipSubmissions(filters: AdminFilters, ids: string[]) {
-  const query = table().select(documentColumns).order("created_at", { ascending: false })
+  const query = table().select(documentColumns).is("archived_at", null).order("created_at", { ascending: false })
     .order("id", { ascending: false }).limit(ZIP_LIMIT + 1);
   const { data, error } = await (ids.length ? query.in("id", ids) : applyFilters(query, filters));
   if (error) throw error;
@@ -105,7 +106,7 @@ export async function listZipSubmissions(filters: AdminFilters, ids: string[]) {
 }
 
 export async function listCsvSubmissions(filters: AdminFilters, from: number, size: number) {
-  const query = table().select(csvColumns, { count: "exact" })
+  const query = table().select(csvColumns, { count: "exact" }).is("archived_at", null)
     .order("created_at", { ascending: false }).order("id", { ascending: false })
     .range(from, from + size - 1);
   const { data, error, count } = await applyFilters(query, filters);

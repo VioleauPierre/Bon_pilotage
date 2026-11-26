@@ -67,18 +67,14 @@ export async function changeSubmission(form: FormData) {
   switch (operation) {
     case "open": {
       const { error } = await table
-        .update({ viewed_at: new Date().toISOString() }).eq("id", id.data).is("viewed_at", null);
+        .update({ viewed_at: new Date().toISOString() }).eq("id", id.data)
+        .is("archived_at", null).is("viewed_at", null);
       if (error) redirect(getAdminHref(filters, "update"));
       revalidatePath("/admin");
       redirect(`/admin/bons/${id.data}?${filterParams(filters)}`);
     }
-    case "unread":
-    case "invoice":
-    case "uninvoice": {
-      const values = operation === "unread"
-        ? { viewed_at: null }
-        : { invoiced: operation === "invoice" };
-      const { error } = await table.update(values).eq("id", id.data);
+    case "unread": {
+      const { error } = await table.update({ viewed_at: null }).eq("id", id.data).is("archived_at", null);
       if (error) redirect(getAdminHref(filters, "update"));
       revalidatePath("/admin");
       redirect(back);

@@ -132,19 +132,17 @@ export default async function AdminPage({ searchParams: raw }: {
                       <td role="cell">
                         <span className={`admin-status${row.viewed_at ? "" : " admin-status-new"}`}>{row.viewed_at ? "Consulté" : "Nouveau"}</span>
                         <small>{mailStatusLabel(row.status)}</small>
-                        <small>{row.invoiced ? "Facturé" : "Non facturé"}</small>
                       </td>
                       <td className="admin-row-actions" role="cell">
                         <div className="admin-inline-actions">
                           <SubmissionAction id={row.id} operation="open" filters={encoded}>Consulter</SubmissionAction>
                           <a className="admin-button" href={pdf + "?download=1"}>PDF</a>
                         </div>
-                        <div className="admin-inline-actions">
-                          {row.viewed_at && <SubmissionAction id={row.id} operation="unread" filters={encoded}>Marquer non lu</SubmissionAction>}
-                          <SubmissionAction id={row.id} operation={row.invoiced ? "uninvoice" : "invoice"} filters={encoded}>
-                            {row.invoiced ? "Marquer non facturé" : "Marquer facturé"}
-                          </SubmissionAction>
-                        </div>
+                        {row.viewed_at && (
+                          <div className="admin-inline-actions">
+                            <SubmissionAction id={row.id} operation="unread" filters={encoded}>Marquer non lu</SubmissionAction>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );

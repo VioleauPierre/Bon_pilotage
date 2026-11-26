@@ -1,6 +1,6 @@
 # Bon Pilotage · ELITE GUIDAGE
 
-Le formulaire public enregistre les bons et mémorise les suggestions utilisées par les pilotes. L’espace `/admin` permet au destinataire autorisé de retrouver les bons enregistrés, de suivre leur consultation et leur facturation, et de récupérer les documents.
+Le formulaire public enregistre les bons et mémorise les suggestions utilisées par les pilotes. L’espace `/admin` permet au destinataire autorisé de retrouver les bons enregistrés, de suivre leur consultation et de récupérer les documents.
 
 ## Démarrage local
 
@@ -16,7 +16,8 @@ Sur la base existante, ouvrir **SQL Editor** et exécuter les fichiers suivants 
 
 1. [`supabase/preflight-admin.sql`](supabase/preflight-admin.sql) en lecture seule. Vérifier les colonnes existantes, l’état de RLS, les politiques et le nombre de références de bon réutilisées.
 2. [`supabase/migrations/202611250001_admin_dashboard.sql`](supabase/migrations/202611250001_admin_dashboard.sql). La migration conserve les bons historiques et crée les tables de mémorisation si elles sont absentes. Elle applique l’unicité aux empreintes des nouvelles soumissions. Les mêmes numéros de bon historiques restent utilisables.
-3. Relancer le contrôle préalable et vérifier que RLS est actif pour les tables concernées. Tester le parcours dans un environnement isolé avec des données fictives. Pour une base vide, exécuter [`supabase/schema.sql`](supabase/schema.sql) avant le contrôle préalable et la migration. Sur la base existante, exécuter uniquement le contrôle préalable et la migration.
+3. [`supabase/migrations/202611260001_archive_test_submissions.sql`](supabase/migrations/202611260001_archive_test_submissions.sql). La migration archive les bons existants dont la date de prestation est antérieure au 7 juin 2026. Les bons archivés sont exclus de l’historique, des indicateurs et des exports.
+4. Relancer le contrôle préalable et vérifier que RLS est actif pour les tables concernées. Tester le parcours dans un environnement isolé avec des données fictives. Pour une base vide, exécuter [`supabase/schema.sql`](supabase/schema.sql) avant le contrôle préalable et les migrations.
 
 Dans Supabase, ouvrir **Authentication → Users → Add user**, créer le destinataire avec son adresse e-mail et un mot de passe unique, puis confirmer son adresse lors de la création. Copier l’UUID de cet utilisateur. Dans **Authentication → Settings**, désactiver les nouvelles inscriptions, conserver le fournisseur **Email** et autoriser les sessions simultanées. Dans **URL Configuration**, renseigner l’URL de l’application comme **Site URL**. L’espace d’administration est prévu pour un seul UUID. [Configuration Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration).
 
@@ -49,7 +50,7 @@ En cas de perte d’un appareil, se connecter depuis un appareil sûr et utilise
 1. Sur ordinateur, ouvrir le formulaire en navigation privée. Soumettre un bon de test en vérifiant les suggestions et le message de confirmation. Refaire le parcours avec l’envoi désactivé, puis avec une panne SMTP simulée. Sur la base isolée, rendre Supabase inaccessible et vérifier que le formulaire affiche une erreur sans effacer la saisie. Relancer une soumission identique et contrôler l’absence de doublon.
 2. Ouvrir `/admin` sans session, puis avec un compte de test non autorisé. Vérifier que l’accès à la liste et aux URL PDF, CSV et ZIP est refusé. Se connecter avec le compte autorisé et fermer puis rouvrir le navigateur.
 3. Sur iPhone, ouvrir l’URL de test dans Safari et se connecter pendant que la session sur ordinateur reste ouverte. Vérifier les cartes, la navigation et les actions sans défilement horizontal. Ouvrir un PDF, puis utiliser **Partager → Enregistrer dans Fichiers**. Tester aussi le téléchargement direct.
-4. Consulter un bon sur un appareil et actualiser l’autre. Vérifier le statut de consultation, la remise en non lu et la facturation. Tester une recherche, chaque période, la pagination, un PDF ancien, le ZIP d’une sélection et du résultat filtré, puis ouvrir le CSV dans Excel.
+4. Consulter un bon sur un appareil et actualiser l’autre. Vérifier le statut de consultation et la remise en non lu. Tester une recherche, chaque période, la pagination, un PDF ancien, le ZIP d’une sélection et du résultat filtré, puis ouvrir le CSV dans Excel.
 5. Dans **Paramètres**, révoquer les autres sessions. Revenir sur le deuxième appareil et vérifier qu’il faut s’y reconnecter.
 
 ## Ordre de grandeur des ressources
