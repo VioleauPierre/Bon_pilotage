@@ -21,18 +21,16 @@ export function isAllowedAdminUserId(id: unknown): id is string {
   return id === primary || id === getSecondAdminUserId();
 }
 
-export async function adminAuthClient(purpose: "admin" | "invitation" = "admin") {
+export async function adminAuthClient() {
   const store = await cookies();
   return createAdminAuthClient({
     getAll: () => store.getAll(),
     setAll: (values) => {
       for (const { name, value, options } of values) {
-        store.set(name, value, purpose === "invitation" && options.maxAge !== 0
-          ? { ...options, maxAge: 600 }
-          : options);
+        store.set(name, value, options);
       }
     },
-  }, purpose);
+  });
 }
 
 export const getAdminSession = cache(async () => {
