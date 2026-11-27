@@ -84,4 +84,6 @@ export type BonPilotageDisplayData = {
   >;
   totalKm?: string | number;
   generatedAt?: string;
+  registeredAt?: string;
+  archiveNote?: string;
 };

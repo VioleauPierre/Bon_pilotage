@@ -1,7 +1,7 @@
 import { COMPANY_INFO } from "@/lib/constants";
 import { formatDateLabel, formatTimeLabel } from "@/lib/format";
 import type { ParsedSubmission } from "@/lib/submission";
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions } from "nodemailer";
 
 type SendBonPilotageEmailInput = {
   submission: ParsedSubmission;
@@ -91,7 +91,7 @@ export function buildBonPilotageEmail(
   { submission, pdfBuffer, fileName }: SendBonPilotageEmailInput,
   sender: string,
   recipient: string,
-): nodemailer.SendMailOptions {
+): SendMailOptions {
   return {
     // Keep the authenticated Gmail address so Gmail can sign the From domain.
     from: { name: `${COMPANY_INFO.name} — Bon Pilotage`, address: sender },
@@ -120,6 +120,9 @@ export async function sendBonPilotageEmail({
   const to = getRequiredEnv("NOTIFICATION_EMAIL");
   const transporter = nodemailer.createTransport({
     service: "gmail",
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 20_000,
     tls: { minVersion: "TLSv1.2" },
     auth: {
       user,
@@ -131,5 +134,6 @@ export async function sendBonPilotageEmail({
     buildBonPilotageEmail({ submission, pdfBuffer, fileName }, user, to),
   );
 
-  return { id: info.messageId };
+  if (info.accepted.length === 0) throw new Error("Envoi non accepté par Gmail");
+  return { id: info.messageId ?? null };
 }

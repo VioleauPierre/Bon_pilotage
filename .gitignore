@@ -17,6 +17,10 @@ npm-debug.log*
 
 # env files
 .env*
+!.env.example
+
+# supabase local
+/supabase/.temp/
 
 # vercel
 .vercel

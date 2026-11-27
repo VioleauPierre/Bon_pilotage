@@ -25,7 +25,8 @@ import {
   resetDraftAfterSuccess,
 } from "@/lib/format";
 import type { ItineraryDraftRow, SubmissionDraft, SubmissionMemory } from "@/lib/types";
-import { type FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { type FormEvent, type MouseEvent, useEffect, useRef, useState } from "react";
 
 type Status =
   | { type: "idle" }
@@ -68,6 +69,7 @@ export function BonPilotageAppV2() {
   const [status, setStatus] = useState<Status>({ type: "idle" });
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitting = useRef(false);
   const [isReviewConfirmed, setIsReviewConfirmed] = useState(false);
 
   const step = flowSteps[currentStep];
@@ -208,7 +210,9 @@ export function BonPilotageAppV2() {
     setCurrentStep((index) => Math.min(index + 1, flowSteps.length - 1));
   }
 
-  function confirmReview() {
+  function confirmReview(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+
     for (const item of flowSteps) {
       if (item.id === "review") break;
       const error = validateFlowStep(item.id, draft);
@@ -220,16 +224,17 @@ export function BonPilotageAppV2() {
     }
 
     setIsReviewConfirmed(true);
-    setStatus({ type: "success", message: "Résumé validé. Tu peux maintenant envoyer le PDF." });
+    setStatus({ type: "success", message: "Résumé validé. Tu peux maintenant transmettre le bon." });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting.current) return;
 
     if (!isReviewConfirmed) {
       setStatus({
         type: "error",
-        message: "Valide d'abord le résumé avant d'envoyer le PDF.",
+        message: "Valide d'abord le résumé avant de transmettre le bon.",
       });
       return;
     }
@@ -244,6 +249,7 @@ export function BonPilotageAppV2() {
       }
     }
 
+    submitting.current = true;
     setIsSubmitting(true);
     setStatus({ type: "idle" });
 
@@ -256,17 +262,31 @@ export function BonPilotageAppV2() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const result = (await response.json()) as { ok?: boolean; message?: string; bonNumber?: string; memory?: SubmissionMemory };
+      const result = (await response.json()) as { ok?: boolean; message?: string; memory?: SubmissionMemory };
       if (!response.ok || !result.ok) throw new Error(result.message || "La soumission a échoué.");
-      if (result.memory) setMemory(result.memory);
+      if (result.memory) {
+        const incoming = result.memory.suggestions;
+        setMemory((current) => ({
+          ...current,
+          suggestions: {
+            ...current.suggestions,
+            transporter: uniqueValues([...incoming.transporter, ...current.suggestions.transporter]).slice(0, 8),
+            departureCity: uniqueValues([...incoming.departureCity, ...current.suggestions.departureCity]).slice(0, 8),
+            arrivalCity: uniqueValues([...incoming.arrivalCity, ...current.suggestions.arrivalCity]).slice(0, 8),
+          },
+        }));
+      }
       setDraft(() => resetDraftAfterSuccess());
       setCurrentStep(0);
       setIsReviewConfirmed(false);
-      setStatus({ type: "success", message: `Le bon ${result.bonNumber || draft.bonNumber} a été généré et envoyé par e-mail.` });
+      setStatus({ type: "success", message: result.message || "Le bon a été enregistré." });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Une erreur inattendue est survenue.";
-      setStatus({ type: "error", message: submitError(`${message} Corrige le formulaire puis réessaie.`) });
+      const message = error instanceof Error && !(error instanceof TypeError)
+        ? error.message
+        : "La transmission est indisponible. Les données saisies sont conservées.";
+      setStatus({ type: "error", message });
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   }
@@ -391,7 +411,7 @@ export function BonPilotageAppV2() {
             <div className="review-block"><div className="review-block-head"><h3>Villes</h3><button className="ghost-inline" type="button" onClick={() => goToStep("timing")}>Modifier</button></div><SummaryRow label="Départ" value={draft.departureCity} /><SummaryRow label="Arrivée" value={draft.arrivalCity} /></div>
             <div className="review-block review-block-wide"><div className="review-block-head"><h3>Trajets</h3><button className="ghost-inline" type="button" onClick={() => goToStep("itinerary")}>Modifier</button></div><div className="review-route-list">{filterFilledItineraryRows(draft.itinerary).map((row, index) => <div className="review-route" key={`review-route-${index}`}><div className="review-route-main"><strong>{row.date}</strong> {row.departureCity} ({row.departureTime}) {"->"} {row.arrivalCity} ({row.arrivalTime})</div><div className="review-route-km">{row.km} km</div></div>)}</div><div className="review-total">Total calculé : {previewData.totalKm || 0} km</div></div>
             <div className="review-block review-block-wide"><div className="review-block-head"><h3>Observations</h3><button className="ghost-inline" type="button" onClick={() => goToStep("observations")}>Modifier</button></div><p className="review-notes">{draft.observations || "Aucune observation renseignée."}</p></div>
-            <div className="review-block review-block-wide"><h3>Envoi</h3><p className="review-notes">Le PDF ne sera envoyé qu'après validation explicite du résumé.</p><div className="review-total">{isReviewConfirmed ? "Résumé validé" : "Résumé à valider"}</div></div>
+            <div className="review-block review-block-wide"><h3>Envoi</h3><p className="review-notes">La transmission du bon exige la validation du résumé.</p><div className="review-total">{isReviewConfirmed ? "Résumé validé" : "Résumé à valider"}</div></div>
           </div></section>
         );
       default:
@@ -401,7 +421,7 @@ export function BonPilotageAppV2() {
 
   const primaryFooterAction = isLastStep
     ? isReviewConfirmed
-      ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Envoi en cours..." : "Envoyer le PDF"}</button>
+      ? <button className="button" type="submit" disabled={isSubmitting}>{isSubmitting ? "Transmission en cours…" : "Transmettre le bon"}</button>
       : <button className="button" type="button" onClick={confirmReview} disabled={isSubmitting}>Valider le résumé</button>
     : <button className="button" type="button" onClick={nextStep} disabled={isSubmitting}>Continuer</button>;
 
@@ -411,7 +431,10 @@ export function BonPilotageAppV2() {
         <header className="app-topbar">
           <div className="app-brand-row">
             <span className="app-kicker">Bon de pilotage</span>
-            <button className="top-reset-button" type="button" onClick={resetForm} disabled={isSubmitting}>Réinitialiser</button>
+            <div className="app-header-actions">
+              <Link className="top-reset-button" href="/admin" prefetch={false}>Administration</Link>
+              <button className="top-reset-button" type="button" onClick={resetForm} disabled={isSubmitting}>Réinitialiser</button>
+            </div>
           </div>
           <div className="app-meta">
             <span className="app-step-label">Étape {currentStep + 1} / {flowSteps.length}</span>
